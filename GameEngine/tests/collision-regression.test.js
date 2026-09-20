@@ -45,11 +45,12 @@ function rng(seed) {
     return () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32;
 }
 
-test('levels 0-16: checkCollisions and checkSolidTiles match the original on random boxes', () => {
+// Level 0 is the slope playground, so only its full blocks are comparable; levels 1-16 must match completely.
+test('levels 0-16: full-block collision matches the original on random boxes', () => {
     for (let n = 0; n <= 16; n++) {
         const tiles = loadLevel(n).map.tiles;
         const map = makeMap(tiles);
-        assert.equal(map.hasShapes, false, `level ${n} unexpectedly has shapes`);
+        assert.equal(map.hasShapes, n === 0, `level ${n}: hasShapes should be ${n === 0}`);
         const rand = rng(n + 1);
         const w = tiles[0].length * SIZE, h = tiles.length * SIZE;
         for (let k = 0; k < 4000; k++) {
@@ -58,7 +59,7 @@ test('levels 0-16: checkCollisions and checkSolidTiles match the original on ran
             const entity = {x, y, width, height, BB: new BoundingBox(x, y, width, height)};
             const expected = referenceCheckCollisions(tiles, entity);
             assert.deepEqual(plain(map.checkSolidTiles(entity)), expected, `level ${n} solid @ ${x},${y}`);
-            assert.deepEqual(plain(map.checkCollisions(entity)), expected, `level ${n} any @ ${x},${y}`);
+            if (n !== 0) assert.deepEqual(plain(map.checkCollisions(entity)), expected, `level ${n} any @ ${x},${y}`);
         }
     }
 });
