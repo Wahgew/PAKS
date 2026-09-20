@@ -651,9 +651,14 @@ class Player {
 
         // Create temporary bounding boxes for collision detection
         const horizontalBB = new BoundingBox(nextX, this.y, this.width, this.height);
-        const verticalBB = new BoundingBox(this.x, nextY, this.width, this.height);
+        let verticalBB = new BoundingBox(this.x, nextY, this.width, this.height);
 
         this.handleHorizontalCollision(horizontalBB, nextX);
+        if (this.y !== this.frameStartY) {
+            // The horizontal pass stepped us up onto a ledge; carry on vertically from there, not from the old y
+            nextY = this.y;
+            verticalBB = new BoundingBox(this.x, nextY, this.width, this.height);
+        }
         this.handleVerticalCollision(verticalBB, nextY, mapHeight);
 
         // Update bounding box
@@ -700,8 +705,10 @@ class Player {
         const limit = Math.abs(nextX - this.x) * this.SLOPE_MAX_RISE + this.SLOPE_STEP_SLACK;
         if (stepUp <= 0 || stepUp > limit) return false;
 
+        // Full blocks only: a slope floor at the new spot is fine (the vertical pass lifts onto it), and the
+        // ramp's next tile is often exactly that. Walls and ceilings among the shapes are checked there too.
         const y = this.y - stepUp;
-        const lifted = this.map.checkCollisions({
+        const lifted = this.map.checkSolidTiles({
             BB: new BoundingBox(nextX, y, this.width, this.height),
             x: nextX,
             y: y,
@@ -718,29 +725,73 @@ class Player {
         return true;
     }
 
-    // Horizontal move against sloped/curved tiles. Walkable surfaces never block: the vertical pass lifts the
-    // player onto them, keeping horizontal speed. Steep faces and ceilings do block, so slide right up to them.
+    // Horizontal move against sloped/curved tiles, done in ~1px steps so the player follows the ground. Each step
+    // is tested, then lifted onto the surface, so the next step starts from it. Walkable surfaces never block
+    // (a 45° slope rises at most as far as we moved); steep faces and ceilings do. Small steps matter: probing
+    // the whole move from the old height sees the tip of the next slope tile poking into the box from below,
+    // which looks like a wall at every seam of a diagonal ramp, and lets speed decide how far up a steep face
+    // we get. Returns the x reached; this.y is raised if we climbed.
     moveAlongShapes(nextX) {
         const dx = nextX - this.x;
         if (dx === 0) return nextX;
 
-        // A floor contact only counts as a wall if it would take more than a slope's worth of lift to clear
-        // (which only happens when moving far in one frame).
-        const stepLimit = Math.abs(dx) * this.SLOPE_MAX_RISE + this.SLOPE_STEP_SLACK;
-        const blockedAt = (x) => this.map.getShapeContacts(new BoundingBox(x, this.y, this.width, this.height))
-            .some(c => c.kind !== 'floor' || c.up > stepLimit);
+        const probe = (px, py) => this.map.getShapeContacts(new BoundingBox(px, py, this.width, this.height));
 
-        if (!blockedAt(nextX)) return nextX;
+        // Can the box stand at (px, py) having just moved `dist` sideways onto it?
+        const blockedAt = (px, py, dist) => {
+            const rise = dist * this.SLOPE_MAX_RISE;
+            const here = probe(px, py);
+            if (here.some(c => c.kind === 'ceiling' || (c.kind === 'floor' && c.up > rise + this.SLOPE_STEP_SLACK))) return true;
+            if (!here.some(c => c.kind === 'wall')) return false;
+            // A wall-looking contact may only be a slope tile's tip poking into the box below its bottom edge.
+            // Re-check with the box raised by the rise a 45° slope allows: a real steep face still hits.
+            return probe(px, py - rise - 1e-6).some(c => c.kind !== 'floor');
+        };
+
+        // Raise y until nothing pushes up from below (a couple of passes: clearing one tile can expose the next)
+        const liftOnto = (px, py) => {
+            for (let i = 0; i < 3; i++) {
+                const lift = probe(px, py).reduce((m, c) => c.kind === 'floor' ? Math.max(m, c.up) : m, 0);
+                if (lift <= 0) break;
+                py -= lift;
+            }
+            return py;
+        };
+
         // Already embedded (debug teleport, spawn): let the move through so the vertical pass can push us out
-        if (blockedAt(this.x)) return nextX;
+        if (blockedAt(this.x, this.y, 0)) return nextX;
 
-        let free = this.x, blocked = nextX;
-        for (let i = 0; i < 10; i++) {
-            const mid = (free + blocked) / 2;
-            if (blockedAt(mid)) blocked = mid; else free = mid;
+        const steps = Math.ceil(Math.abs(dx) / 1);
+        const stepDx = dx / steps;
+        let x = this.x, y = this.y;
+
+        for (let i = 0; i < steps; i++) {
+            // Not x + stepDx: accumulating would end a hair off nextX, and nextX may be the exact map edge
+            const tx = i === steps - 1 ? nextX : this.x + dx * (i + 1) / steps;
+            if (blockedAt(tx, y, Math.abs(stepDx))) {
+                // Close the remaining gap inside this step, then stop
+                let free = x, blocked = tx;
+                for (let k = 0; k < 8; k++) {
+                    const mid = (free + blocked) / 2;
+                    if (blockedAt(mid, y, Math.abs(mid - x))) blocked = mid; else free = mid;
+                }
+                x = free;
+                y = liftOnto(x, y);
+                this.velocity.x = 0;
+                break;
+            }
+            const ny = liftOnto(tx, y);
+            if (ny !== y && blockedAt(tx, ny, 0)) {
+                // Climbing this step would run us into a ceiling or wall: it is a dead end, stay put
+                this.velocity.x = 0;
+                break;
+            }
+            x = tx;
+            y = ny;
         }
-        this.velocity.x = 0;
-        return free;
+
+        this.y = y;
+        return x;
     }
 
     handleWallSlide(bigBlock, collision = null, x = 0, y = 0, width = 0) {

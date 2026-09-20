@@ -3,7 +3,7 @@
 // stay grounded going downhill, jump, and never end up inside the level.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {loadBrowserScripts} = require('./helpers/browserScripts.js');
+const {loadBrowserScripts, loadLevel} = require('./helpers/browserScripts.js');
 
 class Stub {}
 const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'player.js'], {
@@ -36,7 +36,7 @@ function parse(rows) {
 
 // A small headless game: one map, one player, keys you can hold.
 function makeWorld(rows, spawnX, spawnBottom) {
-    const tiles = parse(rows);
+    const tiles = typeof rows[0] === 'string' ? parse(rows) : rows;   // ascii rows or a ready tile array
     const map = Object.create(drawMap.prototype);
     map.drawSize = SIZE;
     map.loadMap(tiles);
@@ -47,7 +47,26 @@ function makeWorld(rows, spawnX, spawnBottom) {
     const player = new Player(game, spawnX, spawnBottom - 74);
     game.entities.push(player);
     const box = () => new BoundingBox(player.x, player.y, player.width, player.height);
-    const inside = () => map.checkCollisions({BB: box(), x: player.x, y: player.y, width: player.width, height: player.height}).collides;
+    // Shapes must never be overlapped. Full blocks may be clipped at a corner by up to ~3px: the original vertical
+    // pass tests a box at the pre-move x, so a diagonal move can nick a block corner (the untouched game does this
+    // too, at up to 3.25px over 180k fuzzed frames, and it resolves itself). Anything deeper is a real bug.
+    const CORNER_CLIP = 4;
+    const inside = () => {
+        if (map.getShapeContacts(box()).length > 0) return true;
+        const b = box();
+        const mapRight = tiles[0].length * SIZE;
+        if (b.right - mapRight > 1e-9) return true;
+        let deepest = 0;
+        for (let r = Math.floor(b.top / SIZE); r <= Math.floor(b.bottom / SIZE); r++) {
+            for (let c = Math.floor(b.left / SIZE); c <= Math.floor(b.right / SIZE); c++) {
+                if (!tiles[r] || tiles[r][c] !== 1) continue;
+                const ox = Math.min(b.right, (c + 1) * SIZE) - Math.max(b.left, c * SIZE);
+                const oy = Math.min(b.bottom, (r + 1) * SIZE) - Math.max(b.top, r * SIZE);
+                if (ox > 0 && oy > 0) deepest = Math.max(deepest, Math.min(ox, oy));
+            }
+        }
+        return deepest > CORNER_CLIP;
+    };
     const step = (keys = {}) => {
         game.keys = keys;
         player.update();
@@ -79,9 +98,12 @@ test('walking up a 45° ramp follows the surface exactly and keeps horizontal sp
     settle(w);
     assert.ok(w.player.isGrounded);
 
-    let flatSpeed = 0, rampSpeed = 0;
+    let flatSpeed = 0, rampSpeed = 0, prevVx = w.player.velocity.x;
     for (let f = 0; f < 400 && w.player.x < 450; f++) {
         w.step({d: true, shift: true});
+        // holding run, speed may only go up: a dip means the player was stopped by something (a tile seam)
+        assert.ok(w.player.velocity.x >= prevVx - 1e-9, `speed dipped ${prevVx.toFixed(1)} -> ${w.player.velocity.x.toFixed(1)} at x=${w.player.x.toFixed(1)}`);
+        prevVx = w.player.velocity.x;
         assert.ok(w.player.isGrounded, `airborne at x=${w.player.x.toFixed(1)}`);
         const right = w.player.x + w.player.width;
         assert.ok(Math.abs(bottom(w.player) - rampSurface(right)) < 1e-6,
@@ -228,6 +250,51 @@ test('an airborne player pressed against a steep face is blocked at it and never
     }
     assert.ok(Math.abs(w.player.x - 149.8) < 0.3, `stopped at x=${w.player.x.toFixed(2)}, expected ~149.8`);
     assert.equal(w.player.velocity.x, 0);
+});
+
+test('level 0 playground: running from the spawn over the pyramid never stalls or leaves the ground', () => {
+    const w = makeWorld(loadLevel(0).map.tiles, 90, 550);
+    settle(w);
+    let prevVx = 0, reachedPlateau = false;
+    for (let f = 0; f < 200 && w.player.x < 320; f++) {
+        w.step({d: true, shift: true});
+        assert.ok(w.player.isGrounded, `airborne at x=${w.player.x.toFixed(1)}`);
+        assert.ok(w.player.velocity.x >= prevVx - 1e-9, `speed dipped ${prevVx.toFixed(1)} -> ${w.player.velocity.x.toFixed(1)} at x=${w.player.x.toFixed(1)}`);
+        prevVx = w.player.velocity.x;
+        if (bottom(w.player) === 500) reachedPlateau = true;
+    }
+    assert.ok(reachedPlateau, 'never got onto the pyramid plateau');
+    assert.ok(w.player.x >= 320, 'stalled before the far side');
+});
+
+test('running into the map edge on a level with slopes keeps the player on the floor, exactly at the edge', () => {
+    // Stepping along shapes must finish on exactly nextX. A hair past the map edge (float drift) trips the
+    // out-of-bounds rule in the vertical pass, which "lands" the player a full body height up.
+    const w = makeWorld(RAMP_UP, 450, 100);
+    settle(w);
+    for (let f = 0; f < 200; f++) w.step({d: true, shift: true});
+    assert.equal(w.player.x, 30 * SIZE - 20);
+    assert.equal(bottom(w.player), 100);
+    assert.ok(w.player.isGrounded);
+});
+
+test('fuzz on the real level 0 playground: random inputs never put the player inside the level', () => {
+    const tiles = loadLevel(0).map.tiles;
+    let totalOnShape = 0;
+    for (let seed = 1; seed <= 10; seed++) {
+        let s = seed * 104729;
+        const rand = () => (s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+        const w = makeWorld(tiles, 90, 550);
+        let keys = {};
+        for (let f = 0; f < 3000; f++) {
+            if (f % 10 === 0) {
+                keys = {a: rand() < 0.4, d: rand() < 0.55, shift: rand() < 0.6, s: rand() < 0.15, ' ': rand() < 0.35};
+            }
+            w.step(keys);
+            if (w.player.onShape) totalOnShape++;
+        }
+    }
+    assert.ok(totalOnShape > 500, `fuzz barely touched slopes (${totalOnShape} frames)`);
 });
 
 test('fuzz: random inputs on a course of slopes, curves, ceilings and ledges never put the player inside the level', () => {
