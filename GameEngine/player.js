@@ -1209,6 +1209,16 @@ class Player {
     }
 
 
+    // Draw-only. On a slope the hitbox rests on its higher corner, so the feet (at the box's centre) would hover
+    // up to ~10px above the surface. How far lower to draw the sprite so it looks planted; collision is unaffected.
+    footDrop() {
+        if (!this.isGrounded || !this.onShape || !this.map || !this.map.hasShapes) return 0;
+        const centre = new BoundingBox(this.x + this.width / 2 - 1, this.y, 2, this.height);
+        const drop = this.map.getDropDistance(centre, this.width / 2 * this.SLOPE_MAX_RISE + 1);
+        const d = Math.min(drop.shape ?? Infinity, drop.solid ?? Infinity);
+        return Number.isFinite(d) ? d : 0;
+    }
+
     // Renders the player character
     draw(ctx) {
         // check if the player is dead first
@@ -1229,7 +1239,7 @@ class Player {
         if (animation) {
             ctx.save();
 
-            let adjustedY = this.y;
+            let adjustedY = this.y + this.footDrop();
             if (this.state === this.STATES.SLIDING || this.state === this.STATES.CROUCHING) {
                 adjustedY = this.y + this.height/4;
             }
