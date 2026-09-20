@@ -173,11 +173,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     createVolumeToggleButton();
 
-    // Add keyboard shortcut for volume panel (M key)
-    // Add keyboard shortcut for volume panel (M key)
+    // Keyboard shortcut for the volume panel. It is V, not M: LevelUI already uses M for "go to the main menu"
+    // on the complete/death screens, and both used to fire at once.
     document.addEventListener('keydown', (e) => {
-        if (e.key.toLowerCase() === 'm') {
-            console.log("M key pressed");
+        if (e.key.toLowerCase() === 'v') {
+            console.log("V key pressed");
             if (window.VOLUME_CONTROL) {
                 console.log("Toggling volume control via keyboard");
                 window.VOLUME_CONTROL.toggle();

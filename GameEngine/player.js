@@ -68,7 +68,13 @@ class Player {
 
         this.velocity = {x: 0, y: 0};
 
-        // Input buffering 
+        // Sloped/curved tiles. Walkable slopes are 45° at most, so the ground rises or falls at most
+        // SLOPE_MAX_RISE px per px of horizontal travel; SLOPE_STEP_SLACK covers float error and a frame of gravity.
+        this.SLOPE_MAX_RISE = 1;
+        this.SLOPE_STEP_SLACK = 2;
+        this.onShape = false; // true if the last collision pass left us standing on a sloped/curved tile
+
+        // Input buffering
         this.jumpBufferTime = 0.15; // Buffer window in seconds
         this.jumpBufferTimer = 0;   // Current buffer timer
         this.updateBB();
@@ -591,6 +597,11 @@ class Player {
 
     // Handles collisions and movement - TICK is time elapsed since last update
     handleCollisions(TICK) {
+        // Kept for the sloped-tile pass, which may need to undo a move or snap back down to the ground
+        this.frameStartX = this.x;
+        this.frameStartY = this.y;
+        this.wasGroundedOnTile = this.isGrounded && this.groundedOn === 'tile';
+
         // Reset groundedOn platform if we're not touching the platform anymore
         // This is a more reliable check than just checking velocity
         if (this.groundedOn === 'platform') {
@@ -640,9 +651,14 @@ class Player {
 
         // Create temporary bounding boxes for collision detection
         const horizontalBB = new BoundingBox(nextX, this.y, this.width, this.height);
-        const verticalBB = new BoundingBox(this.x, nextY, this.width, this.height);
+        let verticalBB = new BoundingBox(this.x, nextY, this.width, this.height);
 
         this.handleHorizontalCollision(horizontalBB, nextX);
+        if (this.y !== this.frameStartY) {
+            // The horizontal pass stepped us up onto a ledge; carry on vertically from there, not from the old y
+            nextY = this.y;
+            verticalBB = new BoundingBox(this.x, nextY, this.width, this.height);
+        }
         this.handleVerticalCollision(verticalBB, nextY, mapHeight);
 
         // Update bounding box
@@ -654,7 +670,8 @@ class Player {
 
     // Handles horizontal collision detection and response : boundingbox for horizontal movement
     handleHorizontalCollision(horizontalBB, nextX) {
-        const collision = this.map.checkCollisions({
+        // Full blocks only here; sloped/curved tiles are handled separately below and after the vertical pass
+        const collision = this.map.checkSolidTiles({
             BB: horizontalBB,
             x: nextX,
             y: this.y,
@@ -663,9 +680,11 @@ class Player {
         });
 
         if (collision.collides) {
-            this.handleWallSlide(false, collision);
+            if (!this.tryStepUp(nextX, collision)) {
+                this.handleWallSlide(false, collision);
+            }
         } else {
-            this.x = nextX;
+            this.x = this.map.hasShapes ? this.moveAlongShapes(nextX) : nextX;
 
             // If we're moving away from a wall, stop sticking
             if (this.wallSticking) {
@@ -676,6 +695,105 @@ class Player {
             }
         }
     }
+    // Walking up a slope into the side of a full block whose top is within one frame's slope rise (a ramp that
+    // ends level with a ledge): step onto the block instead of treating it as a wall. Only while we were
+    // standing on a slope, so flat-ground behavior is untouched.
+    tryStepUp(nextX, collision) {
+        if (!this.onShape || this.velocity.y < 0) return false;
+
+        const stepUp = this.y + this.height - collision.tileY;
+        const limit = Math.abs(nextX - this.x) * this.SLOPE_MAX_RISE + this.SLOPE_STEP_SLACK;
+        if (stepUp <= 0 || stepUp > limit) return false;
+
+        // Full blocks only: a slope floor at the new spot is fine (the vertical pass lifts onto it), and the
+        // ramp's next tile is often exactly that. Walls and ceilings among the shapes are checked there too.
+        const y = this.y - stepUp;
+        const lifted = this.map.checkSolidTiles({
+            BB: new BoundingBox(nextX, y, this.width, this.height),
+            x: nextX,
+            y: y,
+            width: this.width,
+            height: this.height
+        });
+        if (lifted.collides) return false;
+
+        this.x = nextX;
+        this.y = y;
+        this.velocity.y = 0;
+        this.isGrounded = true;
+        this.groundedOn = 'tile';
+        return true;
+    }
+
+    // Horizontal move against sloped/curved tiles, done in ~1px steps so the player follows the ground. Each step
+    // is tested, then lifted onto the surface, so the next step starts from it. Walkable surfaces never block
+    // (a 45° slope rises at most as far as we moved); steep faces and ceilings do. Small steps matter: probing
+    // the whole move from the old height sees the tip of the next slope tile poking into the box from below,
+    // which looks like a wall at every seam of a diagonal ramp, and lets speed decide how far up a steep face
+    // we get. Returns the x reached; this.y is raised if we climbed.
+    moveAlongShapes(nextX) {
+        const dx = nextX - this.x;
+        if (dx === 0) return nextX;
+
+        const probe = (px, py) => this.map.getShapeContacts(new BoundingBox(px, py, this.width, this.height));
+
+        // Can the box stand at (px, py) having just moved `dist` sideways onto it?
+        const blockedAt = (px, py, dist) => {
+            const rise = dist * this.SLOPE_MAX_RISE;
+            const here = probe(px, py);
+            if (here.some(c => c.kind === 'ceiling' || (c.kind === 'floor' && c.up > rise + this.SLOPE_STEP_SLACK))) return true;
+            if (!here.some(c => c.kind === 'wall')) return false;
+            // A wall-looking contact may only be a slope tile's tip poking into the box below its bottom edge.
+            // Re-check with the box raised by the rise a 45° slope allows: a real steep face still hits.
+            return probe(px, py - rise - 1e-6).some(c => c.kind !== 'floor');
+        };
+
+        // Raise y until nothing pushes up from below (a couple of passes: clearing one tile can expose the next)
+        const liftOnto = (px, py) => {
+            for (let i = 0; i < 3; i++) {
+                const lift = probe(px, py).reduce((m, c) => c.kind === 'floor' ? Math.max(m, c.up) : m, 0);
+                if (lift <= 0) break;
+                py -= lift;
+            }
+            return py;
+        };
+
+        // Already embedded (debug teleport, spawn): let the move through so the vertical pass can push us out
+        if (blockedAt(this.x, this.y, 0)) return nextX;
+
+        const steps = Math.ceil(Math.abs(dx) / 1);
+        const stepDx = dx / steps;
+        let x = this.x, y = this.y;
+
+        for (let i = 0; i < steps; i++) {
+            // Not x + stepDx: accumulating would end a hair off nextX, and nextX may be the exact map edge
+            const tx = i === steps - 1 ? nextX : this.x + dx * (i + 1) / steps;
+            if (blockedAt(tx, y, Math.abs(stepDx))) {
+                // Close the remaining gap inside this step, then stop
+                let free = x, blocked = tx;
+                for (let k = 0; k < 8; k++) {
+                    const mid = (free + blocked) / 2;
+                    if (blockedAt(mid, y, Math.abs(mid - x))) blocked = mid; else free = mid;
+                }
+                x = free;
+                y = liftOnto(x, y);
+                this.velocity.x = 0;
+                break;
+            }
+            const ny = liftOnto(tx, y);
+            if (ny !== y && blockedAt(tx, ny, 0)) {
+                // Climbing this step would run us into a ceiling or wall: it is a dead end, stay put
+                this.velocity.x = 0;
+                break;
+            }
+            x = tx;
+            y = ny;
+        }
+
+        this.y = y;
+        return x;
+    }
+
     handleWallSlide(bigBlock, collision = null, x = 0, y = 0, width = 0) {
         const MAX_WALLSLIDE = 175;
         const MAX_JUMP = 850;
@@ -740,13 +858,16 @@ class Player {
         // Skip all tile collision if currently standing on a platform
         if (this.standingPlatform) {
             // Don't apply any vertical movement - platform controls it
+            this.onShape = false;
             return;
         }
 
         // Only get here if not on a platform
+        const wasOnShape = this.onShape;
+        this.onShape = false;
 
-        // Original code for tile collision handling...
-        const collision = this.map.checkCollisions({
+        // Original code for tile collision handling (full blocks only; shapes are resolved at the end)...
+        const collision = this.map.checkSolidTiles({
             BB: verticalBB,
             x: this.x,
             y: nextY,
@@ -784,6 +905,96 @@ class Player {
                 this.isGrounded = true;
                 this.groundedOn = 'tile';
                 this.velocity.y = 0;
+            }
+        }
+
+        if (this.map.hasShapes) {
+            this.resolveShapeContacts(wasOnShape);
+        }
+    }
+
+    // Pushes the player out of sloped/curved tiles after this frame's movement, then keeps them glued to the
+    // ground going downhill. Floors are resolved straight up (not along the surface normal) so horizontal speed
+    // is kept and facet joints on curves can't snag; that is what makes slopes feel like flat ground.
+    resolveShapeContacts(wasOnShape) {
+        const boxAt = () => new BoundingBox(this.x, this.y, this.width, this.height);
+        let landed = false;
+        let moved = false;
+
+        for (let pass = 0; pass < 4; pass++) {
+            const contacts = this.map.getShapeContacts(boxAt());
+            if (contacts.length === 0) break;
+            moved = true;
+
+            let lift = 0, push = 0, wall = null;
+            for (const c of contacts) {
+                if (c.kind === 'floor') lift = Math.max(lift, c.up);
+                else if (c.kind === 'ceiling') push = Math.max(push, c.down);
+                else if (!wall || c.depth > wall.depth) wall = c;
+            }
+
+            if (lift > 0 && push > 0) {
+                // Squeezed between a floor and a ceiling: undo this frame's movement
+                this.x = this.frameStartX;
+                this.y = this.frameStartY;
+                this.velocity.x = 0;
+                this.velocity.y = 0;
+                return;
+            }
+
+            if (lift > 0) {
+                this.y -= lift;
+                if (this.velocity.y >= 0) landed = true;   // moving up through a floor edge isn't a landing
+            } else if (push > 0) {
+                this.y += push;
+                if (this.velocity.y < 0) this.velocity.y = 0;
+            } else if (wall) {
+                // Steep face (over 45°) hit from above, e.g. landing on a hill's shoulder: push out along the
+                // surface and drop the velocity going into it, so we slide off instead of sinking in.
+                this.x += wall.nx * wall.depth;
+                this.y += wall.ny * wall.depth;
+                const into = this.velocity.x * wall.nx + this.velocity.y * wall.ny;
+                if (into < 0) {
+                    this.velocity.x -= into * wall.nx;
+                    this.velocity.y -= into * wall.ny;
+                }
+            }
+        }
+
+        if (moved && this.map.checkCollisions({BB: boxAt(), x: this.x, y: this.y, width: this.width, height: this.height}).collides) {
+            // The push-out ended up inside something else (a low ceiling over a ramp): undo this frame's movement
+            this.x = this.frameStartX;
+            this.y = this.frameStartY;
+            this.velocity.x = 0;
+            this.velocity.y = 0;
+            return;
+        }
+
+        if (landed) {
+            this.velocity.y = 0;
+            this.isGrounded = true;
+            this.groundedOn = 'tile';
+            this.wallSticking = false;
+            this.isWallSliding = false;
+            this.onShape = true;
+        } else if (!this.isGrounded && this.wasGroundedOnTile && this.velocity.y >= 0) {
+            // Was on the ground last frame, no floor under us now: walking downhill (or off a ramp onto flat
+            // ground). Drop by at most what a 45° slope can fall over the distance walked, otherwise let go.
+            const travelled = Math.abs(this.x - this.frameStartX);
+            const maxDrop = travelled * this.SLOPE_MAX_RISE + this.SLOPE_STEP_SLACK;
+            const drop = this.map.getDropDistance(boxAt(), maxDrop);
+            // From a slope any surface will do (a ramp meeting the floor); from flat ground only slopes
+            // qualify, so ordinary ledges stay ledges.
+            const candidates = [drop.shape, wasOnShape ? drop.solid : null].filter(d => d !== null);
+            if (candidates.length > 0) {
+                const d = Math.min(...candidates);
+                this.y += d;
+                this.velocity.y = 0;
+                this.isGrounded = true;
+                this.groundedOn = 'tile';
+                this.wallSticking = false;
+                this.isWallSliding = false;
+                this.onShape = drop.shape !== null && d === drop.shape;
             }
         }
     }
@@ -829,8 +1040,8 @@ class Player {
                 this.height
             );
 
-            // Check if we're still touching a wall tile
-            const collision = this.map.checkCollisions({
+            // Check if we're still touching a wall tile (full blocks only; slopes are never clung to)
+            const collision = this.map.checkSolidTiles({
                 BB: testBB,
                 x: this.wallStickDirection === 'left' ? this.x - 2 : this.x,
                 y: this.y,
@@ -998,6 +1209,16 @@ class Player {
     }
 
 
+    // Draw-only. On a slope the hitbox rests on its higher corner, so the feet (at the box's centre) would hover
+    // up to ~10px above the surface. How far lower to draw the sprite so it looks planted; collision is unaffected.
+    footDrop() {
+        if (!this.isGrounded || !this.onShape || !this.map || !this.map.hasShapes) return 0;
+        const centre = new BoundingBox(this.x + this.width / 2 - 1, this.y, 2, this.height);
+        const drop = this.map.getDropDistance(centre, this.width / 2 * this.SLOPE_MAX_RISE + 1);
+        const d = Math.min(drop.shape ?? Infinity, drop.solid ?? Infinity);
+        return Number.isFinite(d) ? d : 0;
+    }
+
     // Renders the player character
     draw(ctx) {
         // check if the player is dead first
@@ -1018,7 +1239,7 @@ class Player {
         if (animation) {
             ctx.save();
 
-            let adjustedY = this.y;
+            let adjustedY = this.y + this.footDrop();
             if (this.state === this.STATES.SLIDING || this.state === this.STATES.CROUCHING) {
                 adjustedY = this.y + this.height/4;
             }
