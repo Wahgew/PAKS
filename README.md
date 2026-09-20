@@ -62,8 +62,10 @@ GameEngine/
 ├── index.html           # Entry point; loads every script in order
 ├── main.js              # Asset loading and game start
 ├── gameengine.js        # Game loop, input, entity list, debug menu
-├── levelconfig.js       # Hard-coded level definitions
-├── drawMap.js           # Tile-grid maps
+├── levelconfig.js       # Level loading (delegates to LevelLoader / JSON)
+├── levelLoader.js       # Parses and instantiates entities from JSON level data
+├── drawMap.js           # Tile-grid renderer (accepts 2D tile array)
+├── levels/              # level_00.json … level_16.json — one JSON file per floor
 ├── player.js            # Player physics, states, animation
 ├── platform.js, lever.js, bigblock.js, enemies.js   # Level entities and hazards
 ├── LevelUI.js, LevelsScreen.js, gameMenu.js, welcomeScreen.js   # UI screens
@@ -98,7 +100,7 @@ The course is over, but the project isn't. Planned next steps:
 - [ ] Remake all entities/sprites into clean, uniform, scalable SVGs
 - [ ] Sloped and curved level geometry (triangles, circles and other shapes) with matching collision
 - [ ] In-browser level editor with save/load (no more editing code and refreshing)
-- [ ] Data-driven levels (JSON) instead of hard-coded level definitions
+- [x] Data-driven levels (JSON) — all 17 levels loaded from `GameEngine/levels/` at runtime
 - [ ] Tutorial level that teaches the controls
 - [ ] Settings menu with rebindable keys, more sound effects, and original music
 - [ ] Coins and star ratings, ghost replay of your best run, save import/export
