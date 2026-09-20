@@ -41,6 +41,20 @@ function startGame() {
     ASSET_MANAGER.queueDownload("./sprites/elevator_right.png");
 
     ASSET_MANAGER.downloadAll(async () => {
+        // Preload all level JSON files so LEVEL_LOADER is populated before the
+        // game starts. Levels 0–16; failures are logged but don't crash startup.
+        const levelFetches = [];
+        for (let n = 0; n <= 16; n++) {
+            const url = `./levels/level_${String(n).padStart(2, '0')}.json`;
+            levelFetches.push(
+                fetch(url)
+                    .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status} for ${url}`))
+                    .then(data => window.LEVEL_LOADER.store(n, data))
+                    .catch(err => console.error('Failed to load', url, err))
+            );
+        }
+        await Promise.all(levelFetches);
+
         const canvas = document.getElementById("gameWorld");
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false; // uncomment this if we're using pixel art
