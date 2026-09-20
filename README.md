@@ -18,7 +18,7 @@ You play a stickman trying to reach the top of a building, one elevator floor at
 
 - **Momentum-based movement:** acceleration and deceleration instead of instant speed changes, with walk, sprint, skid, crouch and slide
 - **Wall sliding and wall jumping**
-- **Slopes and curves:** 45° ramps and quarter-circle shoulders and quarter-pipes that you run, slide and jump along at full speed
+- **Slopes and curves:** 45° and gentle 26.6° ramps, steep 63.4° faces, and quarter-circle shoulders and quarter-pipes that you run, slide and jump along at full speed
 - **Variable jump height** (release jump early for a shorter hop) and jump buffering
 - **Hazards:** static, moving and tracking spikes, projectile launchers, and glowing lasers
 - **Level mechanics:** solid blocks, one-way platforms you can drop through, moving platforms, levers that unlock the exit, and the exit door
@@ -76,7 +76,7 @@ GameEngine/
 ├── levelconfig.js       # Level loading (delegates to LevelLoader / JSON)
 ├── levelLoader.js       # Parses and instantiates entities from JSON level data
 ├── drawMap.js           # Tile-grid renderer and tile collision (accepts 2D tile array)
-├── tileShapes.js        # Slope and curve geometry, tile ids 10-33, SAT (no game dependencies)
+├── tileShapes.js        # Slope and curve geometry, tile ids 10-73, SAT (no game dependencies)
 ├── levels/              # level_00.json … level_16.json — one JSON file per floor
 ├── player.js            # Player physics, states, animation
 ├── platform.js, lever.js, bigblock.js, enemies.js   # Level entities and hazards
@@ -111,7 +111,7 @@ The course is over, but the project isn't. Planned next steps:
 
 - [ ] Redesign the stickman as clean, scalable SVG-based animation frames
 - [ ] Remake all entities/sprites into clean, uniform, scalable SVGs
-- [x] Sloped and curved level geometry — 45° slopes and quarter circles with SAT collision (half-height slopes and arbitrary polygons to come)
+- [x] Sloped and curved level geometry — 45° and 26.6°/63.4° slopes and quarter circles with SAT collision (arbitrary polygons to come)
 - [ ] In-browser level editor with save/load (no more editing code and refreshing)
 - [x] Data-driven levels (JSON) — all 17 levels loaded from `GameEngine/levels/` at runtime
 - [ ] Tutorial level that teaches the controls

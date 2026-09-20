@@ -139,7 +139,7 @@ Run `node --test` from the repo root first (all tests must pass; they cover coll
 
 ## 14. Slopes and Curves (level 0)
 
-Tick **Debug**, pick **Floor 0**. Along the bottom of the level, left to right: a pyramid (2-tile ramp up, plateau, ramp down), a half-pipe between two 1-tile blocks, a plateau with rounded shoulders, a row of downward-pointing ceiling triangles, and a ramp against the right wall. The spawn drops you at the left of the pyramid. Untick Debug at some point and repeat the movement checks: dying is off in debug, and hazards (the projectile launcher at the right) are live without it.
+Tick **Debug**, pick **Floor 0**. The level is 76 tiles wide. Along the bottom of the left room, left to right: a pyramid (2-tile ramp up, plateau, ramp down), a half-pipe between two 1-tile blocks, a plateau with rounded shoulders, a row of downward-pointing ceiling triangles, and a ramp against the right wall. The spawn drops you at the left of the pyramid. Untick Debug at some point and repeat the movement checks: dying is off in debug, and hazards (the projectile launcher at the right) are live without it.
 
 - [ ] Every slope and curve draws in the level's block colour with no gaps or seams against neighbouring blocks. With Debug on, red outlines follow each shape.
 - [ ] Walk and run (`Shift`) up the pyramid ramp: your speed does **not** drop at any tile seam, you never leave the ground, and your feet stay on the surface. Slopes must not change how fast you go (no slowing uphill, no speeding up downhill).
@@ -153,6 +153,10 @@ Tick **Debug**, pick **Floor 0**. Along the bottom of the level, left to right: 
 - [ ] Ramp against the right wall: you can climb it and step onto the plateau at its top with no stall.
 - [ ] Hazards still work around slopes: a projectile fired left by the launcher is destroyed when it hits a slope or curve, and spikes are stopped by them.
 - [ ] Run into the far right wall and the map edges next to slopes: you stay on the floor (no popping upward).
+- [ ] **Bay for the gentle and steep shapes** (right of the wall at x=1125; get there with click-to-teleport or through the doorway in that wall, 75px high, just above the ledge). Left to right at floor level: a gentle pyramid (two 26.6° steps up, a plateau, two steps down), a V-shaped pit between two steep faces, and a tunnel whose ceiling dips to one tile above head height.
+- [ ] Gentle pyramid: run (`Shift`) up and over it: your speed never dips, you stay grounded the whole way, and your feet stay on the surface. Standing on it you don't slide. A jump from it feels like a jump from flat ground.
+- [ ] V-pit: drop in from above. You land on its floor, and walking into either face stops you like a wall: you can't climb it, and you **don't cling or wall-jump** off it. You can jump out.
+- [ ] Ceiling tunnel: walk through at standing height (25px to spare at the pinch); a jump under it stops your rise at the underside instead of passing through.
 - [ ] Floors 1-16 are unaffected: pick a few and check movement, wall jumps and hazards feel identical to before.
 
 ---

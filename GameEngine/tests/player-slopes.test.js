@@ -554,3 +554,68 @@ test('fuzz: random inputs on a course of gentle ramps, steep faces and gentle ce
     }
     assert.ok(totalOnShape > 300, `fuzz barely touched slopes (${totalOnShape} frames)`);
 });
+
+// The level 0 bay for the gentle and steep shapes (columns 46-75), as described in docs/SMOKE_TEST.md section 14.
+// Floor top is y=550. Columns are x = col * 25.
+test('level 0 bay: running over the gentle pyramid never stalls, leaves the ground or changes speed', () => {
+    const w = makeWorld(level0(), 1155, 550);   // just past the doorway wall, before the first ramp tile at x=1175
+    settle(w);
+    let prevVx = 0, reachedPlateau = false;
+    for (let f = 0; f < 400 && w.player.x < 1440; f++) {
+        w.step({d: true, shift: true});
+        assert.ok(w.player.isGrounded, `airborne at x=${w.player.x.toFixed(1)}`);
+        assert.ok(w.player.velocity.x >= prevVx - 1e-9, `speed dipped ${prevVx.toFixed(1)} -> ${w.player.velocity.x.toFixed(1)} at x=${w.player.x.toFixed(1)}`);
+        prevVx = w.player.velocity.x;
+        if (bottom(w.player) === 500) reachedPlateau = true;
+    }
+    assert.ok(reachedPlateau, 'never got onto the pyramid plateau (y=500)');
+    assert.ok(w.player.x >= 1440, `stalled at x=${w.player.x.toFixed(1)}`);
+    assert.equal(bottom(w.player), 550, 'did not come back down to the floor');
+});
+
+test('level 0 bay: the V-pit is entered from above and its steep faces stop the player like walls', () => {
+    const w = makeWorld(level0(), 1515, 400);   // above the middle of the pit (floor gap x 1500-1575)
+    for (let f = 0; f < 120; f++) w.step();
+    assert.ok(w.player.isGrounded);
+    assert.equal(bottom(w.player), 550, 'did not fall to the pit floor');
+    let clung = false;
+    for (let f = 0; f < 120; f++) { w.step({a: true}); clung = clung || w.player.wallSticking; }
+    assert.ok(Math.abs(w.player.x - 1500) < 0.5, `left face stopped the player at x=${w.player.x.toFixed(2)}, expected 1500`);
+    for (let f = 0; f < 200; f++) { w.step({d: true}); clung = clung || w.player.wallSticking; }
+    assert.ok(Math.abs(w.player.x + w.player.width - 1575) < 0.5, `right face stopped the player with right edge at ${(w.player.x + w.player.width).toFixed(2)}, expected 1575`);
+    assert.equal(clung, false, 'clung to a steep face');
+    assert.equal(bottom(w.player), 550);
+});
+
+test('level 0 bay: the ceiling tunnel can be walked through at standing height and a jump under it is stopped', () => {
+    const w = makeWorld(level0(), 1600, 550);
+    settle(w);
+    for (let f = 0; f < 200 && w.player.x < 1800; f++) {
+        w.step({d: true});
+        assert.equal(bottom(w.player), 550, `left the floor in the tunnel at x=${w.player.x.toFixed(1)}`);
+    }
+    assert.ok(w.player.x >= 1800, `blocked in the tunnel at x=${w.player.x.toFixed(1)}`);
+
+    // jump at the pinch: the underside there is y=450, and the head (top) can't get above it
+    const j = makeWorld(level0(), 1660, 550);   // right edge 1680, under the middle of the pinch (x 1650-1725)
+    settle(j);
+    let minTop = Infinity;
+    for (let f = 0; f < 120; f++) { j.step({' ': true}); minTop = Math.min(minTop, j.player.y); }
+    assert.ok(minTop >= 425 - 1e-6 && minTop <= 450 + 1e-6, `head reached ${minTop.toFixed(2)}, expected it to stop at the underside`);
+});
+
+test('fuzz on the level 0 bay: random inputs never put the player inside the level', () => {
+    let onShape = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+        let s = seed * 15485863;
+        const rand = () => (s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+        const w = makeWorld(level0(), 1160, 550);
+        let keys = {};
+        for (let f = 0; f < 3000; f++) {
+            if (f % 10 === 0) keys = {a: rand() < 0.4, d: rand() < 0.55, shift: rand() < 0.6, s: rand() < 0.15, ' ': rand() < 0.35};
+            w.step(keys);
+            if (w.player.onShape) onShape++;
+        }
+    }
+    assert.ok(onShape > 500, `fuzz barely touched slopes (${onShape} frames)`);
+});
