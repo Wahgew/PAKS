@@ -28,6 +28,17 @@ class LevelConfig {
             return false;
         }
 
+        this.assemble(levelConfig);
+        return true;
+    }
+
+    /**
+     * Replaces everything in the world with the level described by `levelConfig` (the `{map, player, exitDoor,
+     * hazards, tiles}` factories from LevelLoader.getLevelEntities). Split out of loadLevel so a level that isn't
+     * one of the numbered floors, such as a draft being playtested in the level editor, can be built without
+     * touching currentLevel, saved progress or best times.
+     */
+    assemble(levelConfig) {
         // Make sure any level completion UI is hidden first
         if (this.game.levelUI) {
             this.game.levelUI.hideLevelComplete();
@@ -65,8 +76,6 @@ class LevelConfig {
 
         // Add "elevator ding" sound effect when level loads
         // this.playElevatorDing();
-
-        return true;
     }
 
     getCurrentLevel() {
