@@ -787,10 +787,14 @@ class drawMap {
         update() {
         }
 
-        loadMap (levelNumber) {
+        loadMap (tilesOrNumber) {
+                // Accept either a 2D tile array (from JSON) or a legacy level number.
+                if (Array.isArray(tilesOrNumber)) {
+                        this.map = tilesOrNumber.map(row => [...row]);
+                        return;
+                }
+                const levelNumber = tilesOrNumber;
                 console.log("Loading map level:", levelNumber);
-                console.log("Original map1:", this.map1);
-                console.log(levelNumber);
                 if (levelNumber === 0) {
                         this.map = this.map0.map(row => [...row]);
                 }

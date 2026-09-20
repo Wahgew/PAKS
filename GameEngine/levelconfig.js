@@ -1669,7 +1669,11 @@ class LevelConfig {
      */
     loadLevel(levelNumber) {
         this.currentLevel = levelNumber;
-        const levelConfig = this.getLevelEntities(levelNumber);
+
+        // Use JSON-sourced data if available, otherwise fall back to hardcoded.
+        const levelConfig = (window.LEVEL_LOADER && window.LEVEL_LOADER.has(levelNumber))
+            ? window.LEVEL_LOADER.getLevelEntities(levelNumber, this.game, this.TILE_SIZE)
+            : this.getLevelEntities(levelNumber);
         if (!levelConfig) return false;
 
         // Make sure any level completion UI is hidden first
@@ -1682,11 +1686,11 @@ class LevelConfig {
         this.game.entities = [];
         this.game.Player = null;
 
-
         // first create and add the map
         const map = levelConfig.map();
         console.log("Map instance created");
-        map.loadMap(levelNumber);
+        // Pass 2D tile array from JSON if available, otherwise pass level number.
+        map.loadMap(levelConfig.tiles !== undefined ? levelConfig.tiles : levelNumber);
         console.log("Map after loadMap:", map.map);
         this.game.addEntity(map);
 
