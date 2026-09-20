@@ -161,11 +161,53 @@ Tick **Debug**, pick **Floor 0**. The level is 76 tiles wide. Along the bottom o
 
 ---
 
-## 15. Known Issues to Watch
+## 15. Level Editor
+
+Click **LEVEL EDITOR** on the title screen. Serve over HTTP as usual. Use a clean profile for the draft checks, or clear `paks.editor.draft` from localStorage first.
+
+**Opening and layout**
+- [ ] The editor opens with no console errors: a top bar, tool and tile palette on the left, an inspector on the right, and a blank walled level with a stickman **SPAWN** marker and an **EXIT** door.
+- [ ] The level is scaled to fit between the panels (nothing hidden behind them) at 1280x720 and at 1920x1080, and stays fitted when you resize the window.
+- [ ] The palette icons show every tile: block, four 45° slopes, gentle slopes (high and low half), steep slopes (tip and base), rounded shoulders and quarter-pipes, four orientations each.
+- [ ] No floor-time panel is drawn while editing.
+
+**Tiles**
+- [ ] Brush: click paints exactly the clicked cell (also with the page scaled down); a fast drag leaves no gaps; right-drag erases. `Alt`+click or `I` picks the tile under the cursor.
+- [ ] Rectangle (`R`) fills, `Shift` makes an outline. Fill (`F`) floods only the connected area. A translucent ghost shows what you are about to paint.
+- [ ] Picking a slope tile from the palette and painting it draws the same shape as in the game. Build a gentle ramp (a LOW half next to a HIGH half) and a steep face (a TIP above a BASE).
+
+**Entities**
+- [ ] Spike, Launcher, Laser, Platform, Lever place on click (centred on the cursor, snapped); Big block is drawn by dragging (a plain click makes a 100x100 one). Each looks like it does in the game, and nothing moves or fires while editing.
+- [ ] Select (`S`): click an entity, the spawn or the exit to select it (yellow dashed box), drag to move (snapped to the Snap setting), arrow keys nudge, `Delete` removes an entity (never the spawn or exit), `Ctrl+D` duplicates.
+- [ ] The inspector edits each type's fields (numbers, checkboxes, dropdowns, text). An edit changes the level immediately, and Tab moves through the fields without losing focus.
+- [ ] Level panel (nothing selected): Resize warns before cutting off tiles or entities, refuses sizes outside 10-300, and `Ctrl+Z` undoes it. Add border draws the outer ring.
+
+**Undo and problems**
+- [ ] `Ctrl+Z` / `Ctrl+Y` (or `Ctrl+Shift+Z`): a whole brush or move drag is one step, and so is each inspector edit.
+- [ ] Set the exit's levers needed above the number of levers: the Problems list says the exit can never open, Playtest is disabled, and pressing `P` explains why instead of starting. Clicking a problem selects the thing it is about.
+- [ ] Open **Floor 14**: two warnings appear (see Known Issues), and it can still be played.
+
+**Playtest** (`P` or the Playtest button)
+- [ ] The panels hide and the level fills the window with the floor timer. You spawn at the marker and move, jump, wall jump and slide exactly as in the game.
+- [ ] Touching a hazard shows a **YOU DIED** screen; `Enter` restarts from the spawn. Reaching the open exit (after collecting the levers it needs) shows **LEVEL CLEARED** with the time; `Enter` plays again.
+- [ ] `M` and `L` on those screens do not leave the editor or open the menu. `Esc` returns to the editor with the level unchanged.
+- [ ] Afterwards the real game is untouched: no best time was saved for any floor, the Levels screen shows the same progress, and Start still begins on the floor you expect.
+- [ ] Tick **Debug** first: you can't die or win in the playtest (a god-mode test), as in the game.
+
+**Files**
+- [ ] **Open floor** copies a built-in floor into the editor (asks first if you have unsaved changes). The name shows in the top-right with a `*` once modified.
+- [ ] **Save** in Chrome/Edge: the first Save asks for a file and writes it, and later Saves write to the same file with no prompt. Open `GameEngine/levels/level_05.json` with **Open file…**, edit, Save, and `git diff` shows only your change. In a browser without the File System Access API, Save downloads `level_XX.json`.
+- [ ] **Open file…** refuses a file that isn't a level the game can load (bad JSON, ragged rows, unknown tile ids, an unreachable exit) and lists the reasons. The current level is left alone.
+- [ ] Reload the page with unsaved changes (the browser asks first), open the editor again: it offers to **restore your unsaved level**, and Restore brings back exactly what you had.
+- [ ] **Exit** asks before discarding unsaved changes, returns to the title screen, and the game is back at its normal scale. Press Start: a normal game begins and you can move.
+
+## 16. Known Issues to Watch
 
 - **M / V keys:** the volume panel is on `V`; `M` is only "go to menu" on the death/complete screens. Verify `M` there no longer opens the volume panel.
 - **Level 16 lasers:** `direction: 'HORTIZONTAL'` typo was fixed in `levelconfig.js` and is corrected in the JSON files. Confirm all black lasers render and kill the player.
 - **Completing level 16:** The "continue" button now shows a "Game Complete" screen with a "Home" button that returns to the welcome screen. Verify this works and no crash occurs.
+- **Level 14 reversed big blocks:** two `BigBlock`s in level 14 have their corners the wrong way round, so the game draws them but never collides with them. The editor lists them as warnings. Fixing the data would make them solid and change the level, so it is left as is for now.
+- **Editor and the title screen:** exiting the editor returns to the title screen; the level being edited is not kept (save it first, or restore it from the draft).
 - **Level 14 duplicate levers:** Two lever objects are placed at identical coordinates. Confirm the exit door opens after collecting the correct number of unique levers.
 - **Corner clipping (pre-existing):** a diagonal jump or fall into the corner of a full block can nick the corner by a few pixels for a frame before it resolves. Not a slope bug; the original game does it too.
 - **Slope feet:** the hitbox rests on its higher corner on a slope, so with Debug on the box hovers above the surface while the sprite's feet touch it. Expected.

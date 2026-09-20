@@ -27,6 +27,7 @@ You play a stickman trying to reach the top of a building, one elevator floor at
 - **Saved progress** in the browser (unlocked and completed floors)
 - **Elevator-themed UI:** door-opening intro, floor-select panel, and a volume control styled as an elevator panel
 - **Lounge and elevator music** playlist
+- **Level editor:** paint tiles (including every slope shape), place spikes, launchers, lasers, platforms, levers and blocks, move the spawn and exit, playtest instantly, and open or save level JSON, all in the browser
 - **Debug mode** with a level selector, unlock-all button and click-to-teleport
 
 ### Controls
@@ -62,7 +63,7 @@ Collision and movement logic have automated tests that need only Node 20+ (no in
 node --test        # from the repo root
 ```
 
-They cover the slope/curve geometry, a regression check that full-block collision is unchanged on every level, and headless runs of the real player over slopes. UI, audio and saved progress are still checked by hand with [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md).
+They cover the slope/curve geometry, a regression check that full-block collision is unchanged on every level, headless runs of the real player over slopes, and the level editor's model (every real level validates and round-trips, and a level authored with the model can be won and lost). UI, audio and saved progress are still checked by hand with [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md).
 
 ---
 
@@ -77,13 +78,15 @@ GameEngine/
 ├── levelLoader.js       # Parses and instantiates entities from JSON level data
 ├── drawMap.js           # Tile-grid renderer and tile collision (accepts 2D tile array)
 ├── tileShapes.js        # Slope and curve geometry, tile ids 10-73, SAT (no game dependencies)
+├── levelModel.js        # Level editor logic: field schema, validation, tile/entity edits, undo, file format (no game dependencies)
+├── levelEditor.js, levelEditorUI.js   # The in-browser level editor and its panels
 ├── levels/              # level_00.json … level_16.json — one JSON file per floor
 ├── player.js            # Player physics, states, animation
 ├── platform.js, lever.js, bigblock.js, enemies.js   # Level entities and hazards
 ├── LevelUI.js, LevelsScreen.js, gameMenu.js, welcomeScreen.js   # UI screens
 ├── levelProgressManager.js, leveltimesmanager.js    # Saved progress and best times
 ├── audiomanager.js, volumnecontrolui.js             # Music and volume
-├── tests/               # node --test suites (geometry, collision regression, headless player physics)
+├── tests/               # node --test suites (geometry, collision regression, headless player physics, level model and editor)
 ├── sprites/             # Sprite sheets and UI images
 └── sounds/              # Music and sound effects
 ```
@@ -112,7 +115,7 @@ The course is over, but the project isn't. Planned next steps:
 - [ ] Redesign the stickman as clean, scalable SVG-based animation frames
 - [ ] Remake all entities/sprites into clean, uniform, scalable SVGs
 - [x] Sloped and curved level geometry — 45° and 26.6°/63.4° slopes and quarter circles with SAT collision (arbitrary polygons to come)
-- [ ] In-browser level editor with save/load (no more editing code and refreshing)
+- [x] In-browser level editor with save/load (custom levels are not yet playable from the Levels screen)
 - [x] Data-driven levels (JSON) — all 17 levels loaded from `GameEngine/levels/` at runtime
 - [ ] Tutorial level that teaches the controls
 - [ ] Settings menu with rebindable keys, more sound effects, and original music
