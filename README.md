@@ -95,13 +95,15 @@ Created as the team project for TCSS 491. The original project plan aimed for a 
 The course is over, but the project isn't. Planned next steps:
 
 - [ ] Redesign the stickman as clean, scalable SVG-based animation frames
+- [ ] Remake all entities/sprites into clean, uniform, scalable SVGs
 - [ ] Sloped and curved level geometry (triangles, circles and other shapes) with matching collision
 - [ ] In-browser level editor with save/load (no more editing code and refreshing)
 - [ ] Data-driven levels (JSON) instead of hard-coded level definitions
 - [ ] Tutorial level that teaches the controls
-- [ ] Coins and star ratings, ghost replay of your best run, save import/export
 - [ ] Settings menu with rebindable keys, more sound effects, and original music
+- [ ] Coins and star ratings, ghost replay of your best run, save import/export
 - [ ] Power-ups, cosmetics and trail effects, secrets
+- [ ] Final-level cutscene (short, 1-2 minutes)
 
 ## License
 
