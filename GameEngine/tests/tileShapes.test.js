@@ -31,7 +31,8 @@ function isConvex(pts) {
 }
 
 test('the id table has every documented shape and only those', () => {
-    const expected = [10, 11, 12, 13, 20, 21, 22, 23, 30, 31, 32, 33];
+    const expected = [10, 11, 12, 13, 20, 21, 22, 23, 30, 31, 32, 33,
+        40, 41, 42, 43, 50, 51, 52, 53, 60, 61, 62, 63, 70, 71, 72, 73];
     assert.deepEqual(TileShapes.all().map(s => s.id).sort((a, b) => a - b), expected);
     for (const id of expected) assert.ok(TileShapes.isShape(id) && TileShapes.isKnown(id));
     assert.ok(TileShapes.isKnown(0) && TileShapes.isKnown(1));
@@ -78,12 +79,51 @@ test('the four corners of a family are mirror images with the solid mass in the 
         }
         return {x: cx / A, y: cy / A};
     };
-    for (const base of [ID.SLOPE_BL, ID.CONVEX_BL, ID.CONCAVE_BL]) {
+    for (const base of [ID.SLOPE_BL, ID.CONVEX_BL, ID.CONCAVE_BL, ID.GENTLE_HIGH_BL, ID.GENTLE_LOW_BL, ID.STEEP_TIP_BL, ID.STEEP_BASE_BL]) {
         assert.ok(centroid(base).x < 0.5 && centroid(base).y > 0.5, 'BL');
         assert.ok(centroid(base + 1).x > 0.5 && centroid(base + 1).y > 0.5, 'BR');
         assert.ok(centroid(base + 2).x < 0.5 && centroid(base + 2).y < 0.5, 'TL');
         assert.ok(centroid(base + 3).x > 0.5 && centroid(base + 3).y < 0.5, 'TR');
     }
+});
+
+test('gentle and steep ramp halves have the right areas and meet without a seam', () => {
+    const shape = id => TileShapes.all().find(s => s.id === id);
+    const has = (id, x, y) => shape(id).outline.some(p => Math.abs(p.x - x) < 1e-9 && Math.abs(p.y - y) < 1e-9);
+    for (const c of [0, 1, 2, 3]) {
+        near(area(shape(ID.GENTLE_HIGH_BL + c).outline), 0.75);
+        near(area(shape(ID.GENTLE_LOW_BL + c).outline), 0.25);
+        near(area(shape(ID.STEEP_TIP_BL + c).outline), 0.25);
+        near(area(shape(ID.STEEP_BASE_BL + c).outline), 0.75);
+    }
+    // BL: the gentle ramp falls to the right, so HIGH's right edge (1, 0.5) is where LOW's left edge starts
+    assert.ok(has(ID.GENTLE_HIGH_BL, 1, 0.5) && has(ID.GENTLE_LOW_BL, 0, 0.5));
+    // BL: the steep ramp falls downward, so TIP's bottom point (0.5, 1) is where BASE's top edge ends
+    assert.ok(has(ID.STEEP_TIP_BL, 0.5, 1) && has(ID.STEEP_BASE_BL, 0.5, 0));
+    // mirrored: BR flips x, so HIGH's edge moves to (0, 0.5) and LOW's to (1, 0.5)
+    assert.ok(has(ID.GENTLE_HIGH_BR, 0, 0.5) && has(ID.GENTLE_LOW_BR, 1, 0.5));
+});
+
+test('a gentle slope is walkable floor and a steep slope is a wall', () => {
+    // GENTLE_LOW_BR: surface rises from (0,25) to (25,12.5), i.e. y = 25 - x / 2. Sink a box into it.
+    const gentle = TileShapes.contacts([[ID.GENTLE_LOW_BR]], SIZE, box(10, -40, 20, 20));
+    assert.equal(gentle.length, 1);
+    assert.equal(gentle[0].kind, 'floor');
+    near(gentle[0].ny, -2 / Math.sqrt(5));   // surface normal of a 1:2 slope
+    near(gentle[0].up, 20 - (25 - 20 / 2));  // highest surface under the box is at its right edge: y = 15
+
+    // STEEP_BASE_BR: solid on the right, its face runs from (12.5, 0) down to (0, 25), a 63.4° slope, so a box
+    // coming from the left meets a face steeper than 45°
+    const steep = TileShapes.contacts([[ID.STEEP_BASE_BR]], SIZE, box(-10, -30, 4, 24));
+    assert.ok(steep.length > 0 && steep.every(c => c.kind === 'wall'), 'steep face must not count as floor');
+    near(Math.abs(steep[0].ny), 1 / Math.sqrt(5));
+});
+
+test('the underside of a gentle ceiling slope is a ceiling contact', () => {
+    // GENTLE_HIGH_TL: solid top-left, its underside runs from (0, 25) up to (25, 12.5)
+    const [c] = TileShapes.contacts([[ID.GENTLE_HIGH_TL]], SIZE, box(5, 10, 15, 90));
+    assert.equal(c.kind, 'ceiling');
+    near(c.ny, 2 / Math.sqrt(5));
 });
 
 test('get() scales to the tile size and caches', () => {

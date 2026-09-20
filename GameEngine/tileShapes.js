@@ -11,6 +11,10 @@
  *   10-13  SLOPE_*    45° triangle
  *   20-23  CONVEX_*   quarter disc, arc bulges out (a rounded hill shoulder)
  *   30-33  CONCAVE_*  square minus a quarter disc, arc dips in (a quarter-pipe)
+ *   40-43  GENTLE_HIGH_*  first half of a 2-tile-wide, 1-tile-tall ramp (about 26.6°): the half at the tall end
+ *   50-53  GENTLE_LOW_*   the other half, at the low end. A full gentle ramp is a LOW tile next to a HIGH tile
+ *   60-63  STEEP_TIP_*    top half of a 1-tile-wide, 2-tile-tall ramp (about 63.4°): the tile at the tall end
+ *   70-73  STEEP_BASE_*   the bottom half, stacked under the tip. Steeper than 45°, so it blocks like a wall
  *
  * Every shape is stored as convex "pieces" (what collision uses) plus one outline (what the
  * renderer and debug view draw). Arbitrary polygons later means adding pieces, not new code.
@@ -29,6 +33,10 @@ const TileShapes = (() => {
         SLOPE_BL: 10, SLOPE_BR: 11, SLOPE_TL: 12, SLOPE_TR: 13,
         CONVEX_BL: 20, CONVEX_BR: 21, CONVEX_TL: 22, CONVEX_TR: 23,
         CONCAVE_BL: 30, CONCAVE_BR: 31, CONCAVE_TL: 32, CONCAVE_TR: 33,
+        GENTLE_HIGH_BL: 40, GENTLE_HIGH_BR: 41, GENTLE_HIGH_TL: 42, GENTLE_HIGH_TR: 43,
+        GENTLE_LOW_BL: 50, GENTLE_LOW_BR: 51, GENTLE_LOW_TL: 52, GENTLE_LOW_TR: 53,
+        STEEP_TIP_BL: 60, STEEP_TIP_BR: 61, STEEP_TIP_TL: 62, STEEP_TIP_TR: 63,
+        STEEP_BASE_BL: 70, STEEP_BASE_BR: 71, STEEP_BASE_TL: 72, STEEP_BASE_TR: 73,
     };
 
     // ---- Shape definitions, in unit tile space (0..1, y down), written for the BL corner ----
@@ -68,6 +76,41 @@ const TileShapes = (() => {
                     pieces.push({pts: [pt(0, 1), rim[i], rim[i + 1]], hidden});
                 }
                 return {outline: [pt(0, 1), ...rim], pieces};
+            },
+        },
+        // The four ramp families are polygons cut from a straight line, written for the BL corner: solid on the
+        // left, surface falling to the right. Neighbouring halves meet at half height (0.5) or half width (0.5),
+        // so a ramp built from them has no seam. All are single convex pieces.
+        GENTLE_HIGH: {
+            base: 40,
+            build() {
+                // Surface from (0,0) down to (1,0.5): the upper half of a 2-wide, 1-tall ramp
+                const poly = [pt(0, 1), pt(0, 0), pt(1, 0.5), pt(1, 1)];
+                return {outline: poly, pieces: [{pts: poly, hidden: []}]};
+            },
+        },
+        GENTLE_LOW: {
+            base: 50,
+            build() {
+                // Surface from (0,0.5) down to (1,1): continues GENTLE_HIGH, placed on its low side
+                const tri = [pt(0, 1), pt(0, 0.5), pt(1, 1)];
+                return {outline: tri, pieces: [{pts: tri, hidden: []}]};
+            },
+        },
+        STEEP_TIP: {
+            base: 60,
+            build() {
+                // Surface from (0,0) down to (0.5,1): the top half of a 1-wide, 2-tall ramp
+                const tri = [pt(0, 1), pt(0, 0), pt(0.5, 1)];
+                return {outline: tri, pieces: [{pts: tri, hidden: []}]};
+            },
+        },
+        STEEP_BASE: {
+            base: 70,
+            build() {
+                // Surface from (0.5,0) down to (1,1): sits directly under STEEP_TIP
+                const poly = [pt(0, 1), pt(0, 0), pt(0.5, 0), pt(1, 1)];
+                return {outline: poly, pieces: [{pts: poly, hidden: []}]};
             },
         },
     };
