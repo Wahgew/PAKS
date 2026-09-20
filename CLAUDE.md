@@ -21,7 +21,7 @@ Use a local server, not `file://`. Tick the **Debug** checkbox in the page to se
 - **Script tags, global scope.** `index.html` loads every `.js` file with plain `<script>` tags. **Load order matters** (e.g. `gameengine.js` and `levelconfig.js` before entity files, `main.js` last). New files must be added to `index.html` in the right place. Classes and managers are globals.
 - **Engine:** `gameengine.js` owns the loop, input (`game.keys`, lowercase keys like `'a'`, `' '`, `'shift'`), `game.entities`, `game.clockTick`, `game.options.debugging`, and references such as `game.Player`, `game.timer`, `game.levelUI`, `game.levelConfig`, `game.levelTimesManager`.
 - **Entities** implement `update()` and `draw(ctx)`, have a `BB` (`BoundingBox(x, y, w, h)` with `left/right/top/bottom` and `collide()`), and are removed by setting `removeFromWorld = true`. Add them with `game.addEntity()`.
-- **Levels:** `levelconfig.js` → `getLevelEntities(n)` returns `{ map, player, exitDoor, hazards }` factories, all hard-coded in one big object. `drawMap.js` holds tile-grid maps (`TILE_SIZE = 25`) loaded by `loadMap(levelNumber)`. Floor 0 is a test level, floors 1-12 are the main run, and 13-16 are mystery floors unlocked after 12.
+- **Levels:** Each floor is a JSON file in `GameEngine/levels/level_00.json` … `level_16.json`. `main.js` fetches all 17 at startup (requires HTTP server — `fetch()` fails on `file://`) and stores them in `window.LEVEL_LOADER` (a `LevelLoader` instance from `levelLoader.js`). `LevelConfig.loadLevel(n)` calls `LEVEL_LOADER.getLevelEntities(n, game, TILE_SIZE)` which returns `{ map, player, exitDoor, hazards, tiles }` factories and passes `tiles` (a 2D array) to `drawMap.loadMap()`. `drawMap.js` handles tile collision (`checkCollisions`) and canvas sizing. Floor 0 is a test level, floors 1-12 are the main run, and 13-16 are mystery floors unlocked after 12.
 - **Player** (`player.js`): state machine (idle, walking, running, skidding, crouching, sliding, jumping, falling, wall sliding). Physics constants (`MIN_WALK`, `MAX_RUN`, `ACC_*`, `DEC_*`, `MAX_JUMP`, etc.) are declared at the top of `update()`. Collision is AABB with minimum-overlap resolution against `BigBlock`s. Death is triggered in `update()` by overlapping `Projectile`, `Spike` or `GlowingLaser`. Platforms (`platform.js`) are one-way, can move and carry the player.
 - **Sprites:** `Animator` (`animator.js`) — `Animator(spritesheet, xStart, yStart, width, height, frameCount, frameDuration)` and `drawFrame(tick, ctx, x, y, scale)`. Images are queued in `main.js` through the global `ASSET_MANAGER` (`assetmanager.js`). `sprite-tester-html.html` is a helper for finding sprite-sheet frame offsets.
 - **Other files (not in README structure):** `boundingBox.js` (AABB class), `timer.js` (game clock), `util.js` (helpers, `requestAnimFrame` shim), `transition.js` (elevator-door level-transition effect), `exitDoor.js` (exit door entity), `deathAnimate.js` / `deathParticle.js` (death effects), `autoScreenResizer.js` (keeps canvas centered on resize). `autoScaler.js` exists on disk but is commented out of `index.html`.
@@ -31,23 +31,22 @@ Use a local server, not `file://`. Tick the **Debug** checkbox in the page to se
 
 ## Known tech debt and gotchas
 
-- The level count is hard-coded in several places (`levelconfig.js` uses `< 17`, `LevelsScreen.js` uses 12 and 13-16 ranges, `levelProgressManager.js` uses 12). Changing the number of levels means touching all of them.
+- The level count is hard-coded in several places (`LevelsScreen.js` uses 12 and 13-16 ranges, `levelProgressManager.js` uses 12). Adding a level means touching those files.
 - `levelProgressManager.js` monkey-patches both `LevelConfig.prototype.loadNextLevel` **and** `LevelConfig.prototype.loadLevel` at runtime. Fragile. The fallback code inside the patched `loadNextLevel` (used if the original method is somehow absent) hard-codes `< 12`, so the game would cap at level 12 in that edge case.
 - `Player.update()` is very large. Wall-jump cooldowns use `setTimeout` instead of the game clock.
 - Sound effects create a new `Audio` object per play. The elevator "ding" is commented out.
-- Level data is inline code, so every level change means a code edit plus a refresh.
+- Level JSON files are fetched at startup. The game **requires an HTTP server** (`python3 -m http.server`, VS Code Live Server, etc.) — opening `index.html` directly via `file://` will fail to fetch JSON and all levels will refuse to load.
 - File `volumnecontrolui.js` has a typo in its name. Rename only if you update `index.html`.
 - Music tracks in `sounds/` need license/attribution review.
 - Keys `M` (volume panel, `main.js`) and `M` (menu shortcut, `LevelUI.js`) overlap on the complete/death screens.
-- `loadNextLevel()` in `levelconfig.js` checks `this.currentLevel < 17`, which allows it to attempt loading a non-existent level 17 after the final floor. `loadLevel(17)` returns false without clearing entities, leaving the game in an inconsistent state. There is currently no "game complete" screen.
-- Level 16 has three `GlowingLaser` entries with `direction: 'HORTIZONTAL'` (misspelling of `'HORIZONTAL'`). Whether this breaks collision depends on how `GlowingLaser` validates the direction string.
+- `loadNextLevel()` checks `this.currentLevel < 17`, which still allows it to attempt a non-existent level 17 after the final floor. However `LevelUI.js` now intercepts "continue" on level 16 and shows a "Game Complete" / Home screen instead.
 - Level 14 has two duplicate `Lever` objects placed at identical coordinates `(24, 170)` and `(1853, 170)`.
 - `LevelProgressManager.unlockAllLevels()` (the instance method) only loops levels 1–12 due to `NUMBER_OF_LEVELS = 12`. The global `window.unlockAllLevels()` function handles levels 13–16 separately. The two functions are not equivalent.
 
 ## Direction (in priority order)
 
 1. **Stabilize:** fix critical bugs, remove hard-coded level counts, smoke-test checklist in place.
-2. **Data-driven levels (JSON):** move all level definitions out of `levelconfig.js` into JSON files loaded at runtime.
+2. ~~**Data-driven levels (JSON)**~~ ✓ Done — 17 JSON files in `GameEngine/levels/`, loaded via `LevelLoader` at startup.
 3. **Sloped and curved geometry:** N++-style tile shapes (45° slopes, quarter circles) with matching AABB/SAT collision; arbitrary polygons later.
 4. **In-browser level editor:** place entities, paint tiles, playtest, save/load JSON levels without touching code.
 5. **Tutorial level:** teaches movement, wall jump, slide, levers, and the exit door before floor 1.

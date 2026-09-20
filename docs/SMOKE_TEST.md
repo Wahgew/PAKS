@@ -1,6 +1,6 @@
 # P.A.K.S. — Manual Smoke-Test Checklist
 
-Run this after any non-trivial change. Serve from `GameEngine/` with a local server (`python3 -m http.server 8000`). All tests assume a **clean browser profile** (no stale IndexedDB) unless noted.
+Run this after any non-trivial change. Serve from `GameEngine/` with a local server (`python3 -m http.server 8000`). **The game must be served over HTTP** — `file://` URLs prevent JSON level files from loading and will break the game. All tests assume a **clean browser profile** (no stale IndexedDB) unless noted.
 
 ---
 
@@ -140,6 +140,7 @@ Run this after any non-trivial change. Serve from `GameEngine/` with a local ser
 ## 14. Known Issues to Watch
 
 - **M-key conflict:** On the death/complete screen, `M` triggers the "go to menu" action *and* the volume-panel toggle simultaneously. Verify neither crashes.
-- **Level 16 lasers:** Several `GlowingLaser` entities in level 16 use `direction: 'HORTIZONTAL'` (misspelling of `'HORIZONTAL'`). Confirm whether they render and kill the player correctly; if not, this is a blocking bug.
-- **Completing level 16:** After the last floor, the "continue" button calls `loadNextLevel()` which attempts to load non-existent level 17. Verify the game does not crash or visually break (currently no "game complete" screen exists).
+- **Level 16 lasers:** `direction: 'HORTIZONTAL'` typo was fixed in `levelconfig.js` and is corrected in the JSON files. Confirm all black lasers render and kill the player.
+- **Completing level 16:** The "continue" button now shows a "Game Complete" screen with a "Home" button that returns to the welcome screen. Verify this works and no crash occurs.
 - **Level 14 duplicate levers:** Two lever objects are placed at identical coordinates. Confirm the exit door opens after collecting the correct number of unique levers.
+- **JSON level loading:** Open the browser console on load and verify no `Failed to load levels/level_XX.json` errors appear. If they do, the game is likely being served from `file://` instead of HTTP.
