@@ -43,6 +43,12 @@ class LevelUI {
         }
     }
 
+    // Returns true when the player has just finished the final floor
+    isLastLevel() {
+        return this.gameEngine && this.gameEngine.levelConfig &&
+               this.gameEngine.levelConfig.getCurrentLevel() >= 16;
+    }
+
     // Handle button actions
     handleButtonAction(action) {
         switch(action) {
@@ -82,12 +88,21 @@ class LevelUI {
                     console.log("Restarting level from death screen");
                     this.restartLevel();
                 }
-                // If level is complete, go to next level
+                // If level is complete, advance — or return to menu on the final floor
                 else if (this.isDisplayingComplete) {
-                    console.log("Loading next level from complete screen");
                     this.hideLevelComplete();
 
-                    if (this.gameEngine && this.gameEngine.levelConfig) {
+                    if (this.isLastLevel()) {
+                        // Final floor finished — send player back to main menu
+                        this.cleanupGameState();
+                        const ws = document.getElementById("welcomeScreen");
+                        if (ws) {
+                            ws.style.display = "flex";
+                        } else {
+                            new WelcomeScreen(startGame, showLevels);
+                        }
+                    } else if (this.gameEngine && this.gameEngine.levelConfig) {
+                        console.log("Loading next level from complete screen");
                         this.gameEngine.levelConfig.loadNextLevel();
                     }
                 }
@@ -384,34 +399,38 @@ class LevelUI {
         ctx.fillStyle = '#000';
         ctx.fillRect(boxX + boxWidth - 80, boxY + 10, 70, 40);
 
-        // Show next level number
-        const nextLevel = this.gameEngine.levelConfig.getCurrentLevel() + 1;
+        if (this.isLastLevel()) {
+            // Show a "TOP FL" badge instead of a next-floor number
+            ctx.font = 'bold 14px monospace';
+            ctx.fillStyle = '#ffcc00';
+            ctx.textAlign = 'center';
+            ctx.fillText('TOP!', boxX + boxWidth - 45, boxY + 38);
+            ctx.font = '10px monospace';
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillText('TOP FL', boxX + boxWidth - 45, boxY + 20);
+        } else {
+            const nextLevel = this.gameEngine.levelConfig.getCurrentLevel() + 1;
+            ctx.font = 'bold 18px monospace';
+            ctx.fillStyle = '#ff9900';
+            ctx.textAlign = 'center';
+            ctx.fillText(`FL ${nextLevel}`, boxX + boxWidth - 55, boxY + 40);
+            ctx.font = '10px monospace';
+            ctx.fillStyle = '#ff9900';
+            ctx.fillText('NEXT', boxX + boxWidth - 45, boxY + 20);
+            ctx.fillStyle = '#ff9900';
+            ctx.beginPath();
+            ctx.moveTo(boxX-20 + boxWidth - 10, boxY + 40);
+            ctx.lineTo(boxX-20 + boxWidth - 2, boxY + 30);
+            ctx.lineTo(boxX-20 + boxWidth + 2, boxY + 40);
+            ctx.closePath();
+            ctx.fill();
+        }
 
-        // Display next level as floor number with arrow indicating direction
-        ctx.font = 'bold 18px monospace';
-        ctx.fillStyle = '#ff9900'; // Orange color for next floor
-        ctx.textAlign = 'center';
-        ctx.fillText(`FL ${nextLevel}`, boxX + boxWidth - 55, boxY + 40);
-
-        // Add a small label
-        ctx.font = '10px monospace';
-        ctx.fillStyle = '#ff9900';
-        ctx.fillText('NEXT', boxX + boxWidth - 45, boxY + 20);
-
-        // Add an up arrow to indicate direction
-        ctx.fillStyle = '#ff9900';
-        ctx.beginPath();
-        ctx.moveTo(boxX-20 + boxWidth - 10, boxY + 40);
-        ctx.lineTo(boxX-20 + boxWidth - 2, boxY + 30);
-        ctx.lineTo(boxX-20 + boxWidth + 2, boxY + 40);
-        ctx.closePath();
-        ctx.fill();
-
-        // Add title text
+        // Add title text — special heading on the final floor
         ctx.font = 'bold 40px monospace';
         ctx.fillStyle = '#ffcc00';
         ctx.textAlign = 'center';
-        ctx.fillText('FLOOR COMPLETE', centerX, boxY + 80);
+        ctx.fillText(this.isLastLevel() ? 'GAME COMPLETE' : 'FLOOR COMPLETE', centerX, boxY + 80);
 
         // Display times in digital display style
         const displayWidth = 300;
@@ -544,20 +563,24 @@ class LevelUI {
         this.drawElevatorButton(ctx, centerButtonX, buttonY, buttonSize,
             this.buttonStates.levels.hover, 'L', 'Levels', this.drawLevelsIcon, buttonStyle);
 
-        // Different label for continue button based on screen
+        // Third button: Retry on death, Home on game-complete, Next otherwise
         if (this.gameEngine.Player?.dead) {
             this.drawElevatorButton(ctx, rightButtonX, buttonY, buttonSize,
                 this.buttonStates.continue.hover, '⏎', 'Retry', this.drawRestartIcon, buttonStyle);
+        } else if (this.isLastLevel()) {
+            this.drawElevatorButton(ctx, rightButtonX, buttonY, buttonSize,
+                this.buttonStates.continue.hover, '⏎', 'Home', this.drawHomeIcon, buttonStyle);
         } else {
             this.drawElevatorButton(ctx, rightButtonX, buttonY, buttonSize,
                 this.buttonStates.continue.hover, '⏎', 'Next', this.drawNextIcon, buttonStyle);
         }
 
-        // Display keyboard shortcut help text - positioned higher to match mockups
+        // Keyboard hint — "Home" instead of "Continue" on the final floor
+        const enterHint = (this.isDisplayingDeath || !this.isLastLevel()) ? '[Enter] Continue' : '[Enter] Home';
         ctx.font = '12px monospace';
         ctx.fillStyle = isDeathScreen ? '#fff' : '#888';
         ctx.textAlign = 'center';
-        ctx.fillText('Keyboard: [M] Menu | [L] Levels | [Enter] Continue',
+        ctx.fillText(`Keyboard: [M] Menu | [L] Levels | ${enterHint}`,
             boxX + boxWidth/2, buttonY - 10);
     }
 

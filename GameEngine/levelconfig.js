@@ -1399,7 +1399,7 @@ class LevelConfig {
                         gameEngine: this.game,
                         x: 30,
                         y: 30,
-                        direction: 'HORTIZONTAL', // New clearer orientation system
+                        direction: 'HORIZONTAL', // New clearer orientation system
                         flow: 'RIGHT',          // Direction of particle animation
                         length: 1840,
                         color: 'Black',  // Green
@@ -1442,7 +1442,7 @@ class LevelConfig {
                         gameEngine: this.game,
                         x: 30,
                         y: 885,
-                        direction: 'HORTIZONTAL', // New clearer orientation system
+                        direction: 'HORIZONTAL', // New clearer orientation system
                         flow: 'RIGHT',          // Direction of particle animation
                         length: 1840,
                         color: 'Black',  // Green
@@ -1455,7 +1455,7 @@ class LevelConfig {
                         gameEngine: this.game,
                         x: 340,
                         y: 700,
-                        direction: 'HORTIZONTAL', // New clearer orientation system
+                        direction: 'HORIZONTAL', // New clearer orientation system
                         flow: 'RIGHT',          // Direction of particle animation
                         length: 1530,
                         color: 'Black',  // Green
