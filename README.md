@@ -37,7 +37,7 @@ You play a stickman trying to reach the top of a building, one elevator floor at
 | `Shift` + `A`/`D` | Sprint |
 | `W` or `Space` | Jump (press again against a wall to wall jump) |
 | `S` | Crouch, slide (while moving), drop through platforms |
-| `M` | Toggle the volume panel |
+| `V` | Toggle the volume panel |
 | Debug checkbox | Show hitboxes and the debug menu |
 
 ---

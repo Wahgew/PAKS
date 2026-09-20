@@ -12,7 +12,7 @@ Run `node --test` from the repo root first (all tests must pass; they cover coll
 - [ ] "Levels" button is visible and clickable.
 - [ ] Background music starts playing.
 - [ ] Volume button (🎵, top-right) is visible.
-- [ ] `M` key toggles the volume panel.
+- [ ] `V` key toggles the volume panel.
 
 ---
 
@@ -62,7 +62,7 @@ Run `node --test` from the repo root first (all tests must pass; they cover coll
 
 - [ ] Death screen appears after the death animation finishes (~0.5 s).
 - [ ] "Restart" / "Continue" (`Enter`) restarts the current level.
-- [ ] `M` on death screen → goes to main menu (not volume panel — see known M-key conflict).
+- [ ] `M` on death screen → goes to the main menu and the volume panel stays closed. `V` still toggles the volume panel there.
 - [ ] `L` on death screen → goes to levels screen.
 - [ ] Timer resets to zero on restart.
 
@@ -159,7 +159,7 @@ Tick **Debug**, pick **Floor 0**. Along the bottom of the level, left to right: 
 
 ## 15. Known Issues to Watch
 
-- **M-key conflict:** On the death/complete screen, `M` triggers the "go to menu" action *and* the volume-panel toggle simultaneously. Verify neither crashes.
+- **M / V keys:** the volume panel is on `V`; `M` is only "go to menu" on the death/complete screens. Verify `M` there no longer opens the volume panel.
 - **Level 16 lasers:** `direction: 'HORTIZONTAL'` typo was fixed in `levelconfig.js` and is corrected in the JSON files. Confirm all black lasers render and kill the player.
 - **Completing level 16:** The "continue" button now shows a "Game Complete" screen with a "Home" button that returns to the welcome screen. Verify this works and no crash occurs.
 - **Level 14 duplicate levers:** Two lever objects are placed at identical coordinates. Confirm the exit door opens after collecting the correct number of unique levers.

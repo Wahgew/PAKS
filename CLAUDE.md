@@ -44,7 +44,6 @@ Use a local server, not `file://`. Tick the **Debug** checkbox in the page to se
 - Level JSON files are fetched at startup. The game **requires an HTTP server** (`python3 -m http.server`, VS Code Live Server, etc.) — opening `index.html` directly via `file://` will fail to fetch JSON and all levels will refuse to load.
 - File `volumnecontrolui.js` has a typo in its name. Rename only if you update `index.html`.
 - Music tracks in `sounds/` need license/attribution review.
-- Keys `M` (volume panel, `main.js`) and `M` (menu shortcut, `LevelUI.js`) overlap on the complete/death screens.
 - `loadNextLevel()` checks `this.currentLevel < 17`, which still allows it to attempt a non-existent level 17 after the final floor. However `LevelUI.js` now intercepts "continue" on level 16 and shows a "Game Complete" / Home screen instead.
 - Level 14 has two duplicate `Lever` objects placed at identical coordinates `(24, 170)` and `(1853, 170)`.
 - **Full-block corner clip (pre-existing, left alone to preserve feel):** `Player.handleCollisions` builds the vertical-pass box with the pre-move `x`, so a diagonal move can nick a full block's corner by up to ~3px at 60fps (~6px with slow frames). It resolves itself. The untouched game does it too; `player-slopes.test.js` tolerates up to 4px of it (`CORNER_CLIP`) but never any overlap with a shape.
