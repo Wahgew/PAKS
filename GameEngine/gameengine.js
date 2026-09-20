@@ -313,7 +313,7 @@ class GameEngine {
         });
     
         // draw timer with elevator theme
-        if (this.timer) {
+        if (this.timer && !this.hideHud) {   // the level editor hides the floor-time panel while editing
             const displayTime = this.timer.getDisplayTime();
             const minutes = Math.floor(displayTime / 60);
             const seconds = Math.floor(displayTime % 60);
