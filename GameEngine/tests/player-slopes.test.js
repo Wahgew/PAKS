@@ -267,6 +267,56 @@ test('level 0 playground: running from the spawn over the pyramid never stalls o
     assert.ok(w.player.x >= 320, 'stalled before the far side');
 });
 
+// The level 0 playground, as described in docs/SMOKE_TEST.md section 14
+const level0 = () => loadLevel(0).map.tiles;
+
+test('level 0: the W of ceiling triangles can be walked under at standing height', () => {
+    const w = makeWorld(level0(), 790, 550);
+    settle(w);
+    for (let f = 0; f < 120 && w.player.x < 950; f++) {
+        w.step({d: true});
+        assert.equal(bottom(w.player), 550, `left the floor under the ceiling at x=${w.player.x.toFixed(1)}`);
+    }
+    assert.ok(w.player.x >= 950, `blocked under the ceiling at x=${w.player.x.toFixed(1)}`);
+});
+
+test('level 0: from the left block you drop into the half-pipe and are stopped at its 45° point', () => {
+    const w = makeWorld(level0(), 355, 525);   // on top of the block left of the dip
+    settle(w);
+    assert.equal(bottom(w.player), 525);
+    let clung = false;
+    for (let f = 0; f < 150; f++) {
+        w.step({d: true});
+        clung = clung || w.player.wallSticking;
+    }
+    assert.equal(clung, false);
+    // right half is a mirrored quarter-pipe (tile x 400-425): 45° is 7.32px in from its right edge
+    assert.ok(Math.abs(w.player.x + w.player.width - (425 - 7.32)) < 0.5, `stopped with right edge at ${(w.player.x + w.player.width).toFixed(2)}`);
+    assert.ok(w.player.isGrounded);
+});
+
+test('level 0: running off the rounded shoulder of the plateau drops to the floor', () => {
+    const w = makeWorld(level0(), 540, 500);   // on the plateau between the two rounded ends
+    settle(w);
+    assert.equal(bottom(w.player), 500);
+    let onShoulder = false;
+    for (let f = 0; f < 200 && w.player.x < 700; f++) {
+        w.step({d: true});
+        if (w.player.onShape) onShoulder = true;
+    }
+    assert.ok(onShoulder, 'never went over the shoulder, so this proved nothing');
+    assert.ok(w.player.x >= 700, 'caught on the shoulder');
+    assert.equal(bottom(w.player), 550);
+});
+
+test('level 0: the ramp against the right wall can be climbed to the plateau at its top', () => {
+    const w = makeWorld(level0(), 900, 550);
+    settle(w);
+    for (let f = 0; f < 200; f++) w.step({d: true, shift: true});
+    assert.equal(w.player.x, 45 * SIZE - 20, 'did not reach the border wall (column 45)');
+    assert.equal(bottom(w.player), 500);
+});
+
 test('running into the map edge on a level with slopes keeps the player on the floor, exactly at the edge', () => {
     // Stepping along shapes must finish on exactly nextX. A hair past the map edge (float drift) trips the
     // out-of-bounds rule in the vertical pass, which "lands" the player a full body height up.
