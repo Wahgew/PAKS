@@ -86,7 +86,7 @@ test('fields the editor does not know about survive a round trip', () => {
 // entity in every level, so a change to a sprite size or hitbox fails here instead of misplacing things in the editor.
 test('entity boxes match the real entity classes on every entity in every level', () => {
     const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js',
-        'bigblock.js', 'enemies.js', 'player.js', 'levelLoader.js'], {
+        'bigblock.js', 'enemies.js', 'hint.js', 'player.js', 'levelLoader.js'], {
         window: {},
         console: {log() {}, warn: console.warn, error: console.error},   // GlowingLaser logs on every construction
         ASSET_MANAGER: {getAsset: () => ({width: 46, height: 106})},
@@ -119,12 +119,13 @@ test('entity boxes match the real entity classes on every entity in every level'
         compare(`level ${n} player`, M.boundsFor('Player', level.player), boxOf(parts.player()));
     }
     assert.ok(checked > 200);
-    for (const type of M.ENTITY_TYPE_NAMES) assert.ok(seenTypes.has(type), `no real level has a ${type}, so its size is unchecked`);
+    // Hint signs only appear in the tutorial, whose box is checked in hint.test.js
+    for (const type of M.ENTITY_TYPE_NAMES.filter(t => t !== 'Hint')) assert.ok(seenTypes.has(type), `no real level has a ${type}, so its size is unchecked`);
 });
 
 test('a new entity of every type validates and loads through the real LevelLoader', () => {
     const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js',
-        'bigblock.js', 'enemies.js', 'player.js', 'levelLoader.js'], {
+        'bigblock.js', 'enemies.js', 'hint.js', 'player.js', 'levelLoader.js'], {
         window: {},
         console: {log() {}, warn() {}, error: console.error},
         ASSET_MANAGER: {getAsset: () => ({width: 46, height: 106})},
