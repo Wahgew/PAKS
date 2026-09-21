@@ -27,6 +27,7 @@ You play a stickman trying to reach the top of a building, one elevator floor at
 - **Saved progress** in the browser (unlocked and completed floors)
 - **Elevator-themed UI:** door-opening intro, floor-select panel, and a volume control styled as an elevator panel
 - **Lounge and elevator music** playlist
+- **Large levels:** the game draws a fixed 76x41-tile view and scrolls with you on bigger levels, so tiles and sprites stay the same size at any level size and on any screen (up to 300x300 tiles)
 - **Level editor:** paint tiles (including every slope shape), place spikes, launchers, lasers, platforms, levers and blocks, move the spawn and exit, playtest instantly, and open or save level JSON, all in the browser
 - **Debug mode** with a level selector, unlock-all button and click-to-teleport
 
@@ -78,6 +79,7 @@ GameEngine/
 ├── levelLoader.js       # Parses and instantiates entities from JSON level data
 ├── drawMap.js           # Tile-grid renderer and tile collision (accepts 2D tile array)
 ├── tileShapes.js        # Slope and curve geometry, tile ids 10-73, SAT (no game dependencies)
+├── camera.js            # The view onto the level: following the player, clamping, editor pan and zoom (no game dependencies)
 ├── levelModel.js        # Level editor logic: field schema, validation, tile/entity edits, undo, file format (no game dependencies)
 ├── levelEditor.js, levelEditorUI.js   # The in-browser level editor and its panels
 ├── levels/              # level_00.json … level_16.json — one JSON file per floor
