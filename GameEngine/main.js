@@ -1,7 +1,12 @@
 let ASSET_MANAGER;
-function startGame() {
-    console.log("Game Starting...");
+// options.editor starts the level editor (levelEditor.js) on a fresh engine instead of the game
+function startGame(options = {}) {
+    console.log(options.editor ? "Level editor starting..." : "Game Starting...");
     const gameEngine = new GameEngine();
+    // Every Start builds a new engine on the same canvas and old loops are not always stopped, so stop the last
+    // one before the editor takes over the canvas.
+    if (options.editor && window.LAST_ENGINE) window.LAST_ENGINE.running = false;
+    window.LAST_ENGINE = gameEngine;
     ASSET_MANAGER = new AssetManager(); // Declared globally, accessible everywhere if I set it to const the map not gonna load when pressing start
 
     // "block/tiles"
@@ -60,6 +65,15 @@ function startGame() {
         ctx.imageSmoothingEnabled = false; // uncomment this if we're using pixel art
 
         await gameEngine.init(ctx);
+
+        if (options.editor) {
+            // No gameEngine.levelConfig: the debug floor picker would load a floor over the level being edited
+            window.LEVEL_EDITOR = new LevelEditor(gameEngine);
+            window.LEVEL_EDITOR.open();
+            gameEngine.start();
+            return;
+        }
+
         gameEngine.levelConfig = new LevelConfig(gameEngine);
         
         if (!window.GAME_MENU) {
@@ -89,6 +103,10 @@ function startGame() {
         // gameEngine.levelTimesManager.resetBestTime(0, 3000)
         // gameEngine.levelTimesManager.debugPrintAllTimes();
     });
+}
+
+function startEditor() {
+    startGame({editor: true});
 }
 
 function showLevels() {

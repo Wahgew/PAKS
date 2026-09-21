@@ -85,6 +85,21 @@ class WelcomeScreen {
         });
 
         this.welcomeContainer.appendChild(buttonContainer);
+
+        // Level editor entry: a plain elevator-panel button under the picture buttons
+        const editorButton = document.createElement("button");
+        editorButton.id = "levelEditorButton";
+        editorButton.textContent = "LEVEL EDITOR";
+        editorButton.style.cssText = "margin-top:24px;padding:8px 22px;background:#333;color:#ffcc00;border:2px solid #555;" +
+            "border-radius:6px;cursor:pointer;font:16px 'Molot',sans-serif;letter-spacing:2px;transition:0.2s";
+        editorButton.addEventListener("mouseover", () => { editorButton.style.background = "#444"; editorButton.style.borderColor = "#ffcc00"; });
+        editorButton.addEventListener("mouseout", () => { editorButton.style.background = "#333"; editorButton.style.borderColor = "#555"; });
+        editorButton.addEventListener("click", () => {
+            this.hideWelcomeScreen();
+            startEditor();
+        });
+        this.welcomeContainer.appendChild(editorButton);
+
         document.body.appendChild(this.welcomeContainer);
     }
 

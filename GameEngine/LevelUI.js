@@ -31,6 +31,8 @@ class LevelUI {
     handleKeyDown(event) {
         // Make sure gameEngine and Player exist before checking properties
         if (!this.gameEngine || !this.gameEngine.Player) return;
+        // Playtesting in the level editor has its own death/clear screens; M and L must not leave the editor
+        if (this.gameEngine.editor && this.gameEngine.editor.mode === 'playtest') return;
 
         // Only respond to keyboard if a UI screen is showing
         if (!this.isDisplayingComplete && !this.gameEngine.Player.dead) return;
