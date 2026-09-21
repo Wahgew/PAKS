@@ -18,6 +18,8 @@ Run `node --test` from the repo root first (all tests must pass; they cover coll
 
 ## 2. Game Start — Level 1
 
+> On a clean profile the very first Start opens the tutorial (section 16), not floor 1. To check floor 1 here, finish or skip the tutorial first, or use Levels → Floor 1.
+
 - [ ] Clicking "Start" hides the welcome screen and shows the canvas.
 - [ ] Level 1 loads: player spawns at bottom-right, exit door at top-left.
 - [ ] Floor-time timer starts and counts up.
@@ -95,7 +97,7 @@ Run `node --test` from the repo root first (all tests must pass; they cover coll
 - [ ] Clicking an unlocked floor loads that floor and starts the timer.
 - [ ] Clicking a locked floor shows the lock message (no crash).
 - [ ] Mystery floors 13–16 are greyed out until floor 12 is completed.
-- [ ] "Reset Progress" button resets all unlocked/completed state to default (only floor 1 unlocked).
+- [ ] "Reset Progress" button resets all unlocked/completed state to default (only floor 1 unlocked). It also clears every best time and the tutorial, so the next Start opens the tutorial again.
 - [ ] "Home" button returns to the welcome screen.
 - [ ] "Back" button returns to the currently running game.
 
@@ -126,7 +128,7 @@ Run `node --test` from the repo root first (all tests must pass; they cover coll
 
 - [ ] Refreshing after completing a level preserves unlocked and completed state.
 - [ ] Best times survive a page refresh.
-- [ ] Resetting progress (levels screen) clears best times and unlocked levels.
+- [ ] Resetting progress (levels screen) clears best times, unlocked levels and the tutorial flag.
 
 ---
 
@@ -185,6 +187,7 @@ Click **LEVEL EDITOR** on the title screen. Serve over HTTP as usual. Use a clea
 **Entities**
 - [ ] Spike, Launcher, Laser, Platform, Lever place on click (centred on the cursor, snapped); Big block is drawn by dragging (a plain click makes a 100x100 one). Each looks like it does in the game, and nothing moves or fires while editing.
 - [ ] Select (`S`): click an entity, the spawn or the exit to select it (yellow dashed box), drag to move (snapped to the Snap setting), arrow keys nudge, `Delete` removes an entity (never the spawn or exit), `Ctrl+D` duplicates.
+- [ ] Hint sign places on click (default 300x80, "Hold [Shift] to sprint"), draws its `[Key]` words as key caps and shows at full strength while editing. Its inspector edits X, Y, Width, Height and Text.
 - [ ] The inspector edits each type's fields (numbers, checkboxes, dropdowns, text). An edit changes the level immediately, and Tab moves through the fields without losing focus.
 - [ ] Level panel (nothing selected): Resize warns before cutting off tiles or entities, refuses sizes outside 10-300, and `Ctrl+Z` undoes it. Add border draws the outer ring.
 
@@ -214,8 +217,34 @@ Click **LEVEL EDITOR** on the title screen. Serve over HTTP as usual. Use a clea
 - [ ] Reload the page with unsaved changes (the browser asks first), open the editor again: it offers to **restore your unsaved level**, and Restore brings back exactly what you had.
 - [ ] **Exit** asks before discarding unsaved changes, returns to the title screen, and the game is back at its normal scale. Press Start: a normal game begins and you can move.
 
-## 16. Known Issues to Watch
+## 16. Tutorial
 
+Use a clean profile for the first-run checks (or press Reset Progress on the Levels screen, which brings the tutorial back). The whole level is on screen at once; nothing scrolls.
+
+**Starting it**
+- [ ] The title screen has a **TUTORIAL** button next to LEVEL EDITOR.
+- [ ] On a fresh profile, **Start** opens the tutorial (not floor 1). There is no floor-time panel, a **SKIP TUTORIAL** button sits top-left, and every sign is readable at 1280x720 and 1920x1080.
+- [ ] After finishing or skipping it, **Start** goes straight to floor 1. A profile that has already completed a floor is not sent to the tutorial by Start.
+- [ ] The **TUTORIAL** button opens it every time, also after it is done.
+
+**Playing it** (left to right along the bottom, then up the shaft and back left along the top)
+- [ ] Signs cover: move `[A]` `[D]`, sprint `[Shift]`, jump `[W]`/`[Space]` and hold for height, spikes, the laser and `[S]`, wall jump, the lever, the exit. Key names are drawn as key caps, and the sign nearest you is the brightest.
+- [ ] Walk and sprint, hop the small step, jump the three spikes (touching one shows the death screen and `Enter` restarts the tutorial from the beginning), and climb the tall box with a held jump (a tap is not enough).
+- [ ] Laser: running into it standing up kills you. Run and hold `S` to slide under it (start the slide a moment before it; you have about 180px of leeway). You cannot jump over it: the ceiling stops you.
+- [ ] Shaft: jump at a wall, then press `W` again while sliding down it, and alternate walls to climb. Holding `W` alone does not get you up. Hop out to the left onto the top floor.
+- [ ] Touch the lever on its box: the exit door opens. Without the lever the exit does not finish the tutorial.
+- [ ] Reaching the open exit shows **TUTORIAL COMPLETE** ("You know the moves. Floor 1 is next.") with no times. `Enter` (or Next) starts floor 1 with the timer back. `M` and `L` still work.
+- [ ] **SKIP TUTORIAL** (click) goes to floor 1, and lights its border when the pointer is over it. It does not show on the death or clear screens.
+- [ ] Finishing or skipping it never saves a best time or unlocks or completes a floor: the Levels screen is unchanged (only floor 1 unlocked, nothing completed).
+- [ ] Debug on: the debug picker lists **Tutorial**, and in it you can't die or win (god mode).
+
+**Reset**
+- [ ] Complete floor 1 so it has a best time, then Levels → **Reset Progress**: only floor 1 is unlocked, the best time is gone, and the next **Start** opens the tutorial again.
+
+## 17. Known Issues to Watch
+
+
+- **Esc and the tutorial:** `Esc` opens the in-game menu, so the tutorial is skipped with its on-screen button, not `Esc`.
 - **M / V keys:** the volume panel is on `V`; `M` is only "go to menu" on the death/complete screens. Verify `M` there no longer opens the volume panel.
 - **Level 16 lasers:** `direction: 'HORTIZONTAL'` typo was fixed in `levelconfig.js` and is corrected in the JSON files. Confirm all black lasers render and kill the player.
 - **Completing level 16:** The "continue" button now shows a "Game Complete" screen with a "Home" button that returns to the welcome screen. Verify this works and no crash occurs.
