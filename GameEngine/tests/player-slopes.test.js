@@ -3,7 +3,9 @@
 // stay grounded going downhill, jump, and never end up inside the level.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {loadBrowserScripts, loadLevel} = require('./helpers/browserScripts.js');
+// The level 0 tests below read tests/fixtures/slope-playground.json, a frozen copy of the test floor as it was when
+// they were written, so editing the real level 0 in the level editor can't break them.
+const {loadBrowserScripts, loadFixture} = require('./helpers/browserScripts.js');
 
 class Stub {}
 const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'player.js'], {
@@ -393,7 +395,7 @@ test('an airborne player pressed against a steep face is blocked at it and never
 });
 
 test('level 0 playground: running from the spawn over the pyramid never stalls or leaves the ground', () => {
-    const w = makeWorld(loadLevel(0).map.tiles, 90, 550);
+    const w = makeWorld(loadFixture('slope-playground').map.tiles, 90, 550);
     settle(w);
     let prevVx = 0, reachedPlateau = false;
     for (let f = 0; f < 200 && w.player.x < 320; f++) {
@@ -408,7 +410,7 @@ test('level 0 playground: running from the spawn over the pyramid never stalls o
 });
 
 // The level 0 playground, as described in docs/SMOKE_TEST.md section 14
-const level0 = () => loadLevel(0).map.tiles;
+const level0 = () => loadFixture('slope-playground').map.tiles;
 
 test('level 0: the W of ceiling triangles can be walked under at standing height', () => {
     const w = makeWorld(level0(), 790, 550);
@@ -469,7 +471,7 @@ test('running into the map edge on a level with slopes keeps the player on the f
 });
 
 test('fuzz on the real level 0 playground: random inputs never put the player inside the level', () => {
-    const tiles = loadLevel(0).map.tiles;
+    const tiles = loadFixture('slope-playground').map.tiles;
     let totalOnShape = 0;
     for (let seed = 1; seed <= 10; seed++) {
         let s = seed * 104729;

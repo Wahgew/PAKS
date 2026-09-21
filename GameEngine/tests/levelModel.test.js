@@ -11,19 +11,47 @@ const M = LevelModel;
 const LEVELS = Array.from({length: 17}, (_, n) => n);
 const plain = v => JSON.parse(JSON.stringify(v));   // strip the vm realm's prototypes before deepEqual
 
-test('every real level validates with no errors; the only warnings are the two reversed big blocks in level 14', () => {
+test('every real level validates with no errors and no warnings (level 14 may still carry its old reversed big blocks)', () => {
     for (const n of LEVELS) {
         const {errors, warnings} = M.validate(loadLevel(n));
         assert.deepEqual(errors, [], `level ${n} errors`);
-        if (n === 14) {
-            // Existing level bug, left as is: y2 < y (and x2 < x on the second), so the game gives these blocks a
-            // negative-size box. They are drawn but never collide. Fixing it would change how level 14 plays.
-            assert.equal(warnings.length, 2);
-            assert.ok(warnings.every(w => /BigBlock/.test(w.path) && /never solid/.test(w.message)));
-        } else {
-            assert.deepEqual(warnings, [], `level ${n} warnings`);
-        }
+        // Level 14 once had two BigBlocks with reversed corners (y2 < y), which the game draws but never collides
+        // with. That is fixed in the data now; the only warning still accepted anywhere is that one.
+        const leftover = warnings.filter(w => !(n === 14 && /BigBlock/.test(w.path) && /never solid/.test(w.message)));
+        assert.deepEqual(leftover, [], `level ${n} warnings`);
     }
+});
+
+test('no real level spawns the player inside a tile or block (they stand on top of it instead)', () => {
+    for (const n of LEVELS) {
+        const spawn = M.validate(loadLevel(n)).warnings.filter(w => w.path === 'player');
+        assert.deepEqual(spawn, [], `level ${n}: ${spawn.map(w => w.message).join()}`);
+    }
+});
+
+test('a spawn inside a block, a big block or a slope is flagged; standing on top, or in a reversed block, is not', () => {
+    const warnsSpawn = level => M.validate(level).warnings.some(w => w.path === 'player' && /inside a solid/.test(w.message));
+    const level = M.createBlank(20, 12);
+    assert.equal(warnsSpawn(level), false, 'standing on the floor is fine');
+
+    const inTile = M.createBlank(20, 12);
+    M.fillRect(inTile, 1, 5, 4, 7, 1);
+    inTile.player = {x: 60, y: 130};
+    assert.equal(warnsSpawn(inTile), true, 'overlapping full blocks');
+    inTile.player = {x: 60, y: 125 - 74};
+    assert.equal(warnsSpawn(inTile), false, 'resting exactly on top of them is not an overlap');
+
+    const inBig = M.createBlank(20, 12);
+    inBig.entities.push({type: 'BigBlock', x: 100, y: 100, x2: 200, y2: 150});
+    inBig.player = {x: 120, y: 90};
+    assert.equal(warnsSpawn(inBig), true, 'overlapping a big block');
+    inBig.entities[0] = {type: 'BigBlock', x: 100, y: 150, x2: 200, y2: 100};   // reversed: never solid in the game
+    assert.equal(warnsSpawn(inBig), false, 'a reversed big block has no solid box');
+
+    const inSlope = M.createBlank(20, 12);
+    inSlope.map.tiles[9][4] = TileShapes.ID.SLOPE_BR;   // row 9 = y 225-250, floor row 11 is at y 275
+    inSlope.player = {x: 100, y: 275 - 74 - 30};        // hovering in the slope's tile column, box reaching into it
+    assert.equal(warnsSpawn(inSlope), true, 'overlapping a slope tile');
 });
 
 test('serialize then parse gives back exactly the same level, for every real level', () => {

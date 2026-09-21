@@ -403,6 +403,26 @@ const LevelModel = (() => {
     }
 
     /**
+     * True if a box overlaps something solid: a full block tile, a slope shape, or a big block that is really solid
+     * (a reversed one has a negative-size box in the game, so it never collides). The engine pushes a player out of
+     * whatever they spawn inside, so this is a data mistake, not a crash: stand the spawn on top of the thing instead.
+     */
+    function overlapsSolid(level, box, entities) {
+        const tiles = level.map.tiles;
+        const b = {left: box.x, top: box.y, right: box.x + box.w, bottom: box.y + box.h};
+        const inside = (l, t, r, bt) => Math.min(b.right, r) - Math.max(b.left, l) > 0 && Math.min(b.bottom, bt) - Math.max(b.top, t) > 0;
+        for (let r = Math.max(0, Math.floor(b.top / TILE_SIZE)); r <= Math.floor(b.bottom / TILE_SIZE); r++) {
+            for (let c = Math.max(0, Math.floor(b.left / TILE_SIZE)); c <= Math.floor(b.right / TILE_SIZE); c++) {
+                if (tiles[r] && tiles[r][c] === Shapes.ID.SOLID && inside(c * TILE_SIZE, r * TILE_SIZE, (c + 1) * TILE_SIZE, (r + 1) * TILE_SIZE)) return true;
+            }
+        }
+        for (const e of entities) {
+            if (isObj(e) && e.type === 'BigBlock' && isNum(e.x) && isNum(e.y) && e.x2 > e.x && e.y2 > e.y && inside(e.x, e.y, e.x2, e.y2)) return true;
+        }
+        return Shapes.overlapsAny(tiles, TILE_SIZE, b) !== null;
+    }
+
+    /**
      * Checks a level the way the loader will use it. `errors` mean the level can't load or can't be finished
      * (the editor refuses to import or playtest it); `warnings` are things that are probably mistakes.
      * @returns {{errors: {path,message}[], warnings: {path,message}[]}}
@@ -471,6 +491,9 @@ const LevelModel = (() => {
             const w = tiles[0].length * TILE_SIZE, h = tiles.length * TILE_SIZE;
             const outside = b => b.x + b.w <= 0 || b.y + b.h <= 0 || b.x >= w || b.y >= h;
             if (player && outside(boundsFor('Player', player))) warn('player', 'starts outside the map');
+            else if (player && overlapsSolid(level, boundsFor('Player', player), entities)) {
+                warn('player', 'starts inside a solid tile or block; stand the spawn on top of it instead');
+            }
             if (exit && outside(boundsFor('ExitDoor', exit))) warn('exitDoor', 'is outside the map');
             entities.forEach((e, i) => {
                 if (isObj(e) && TYPES[e.type] && isNum(e.x) && isNum(e.y) && outside(boundsFor(e.type, e))) {
