@@ -156,6 +156,7 @@ class LevelEditor {
         this.mode = 'edit';
         game.editor = this;
         game.hideHud = true;               // no floor-time panel while editing
+        game.cameraManual = true;          // the editor pans and zooms the camera itself
         game.Player = null;
         this.canvas.style.display = 'block';
 
@@ -166,7 +167,7 @@ class LevelEditor {
         game.entities = [this.map, this.overlay];
 
         this.wrapper = document.getElementById('game-inner-wrapper');
-        this.savedTransform = this.wrapper ? this.wrapper.style.transform : '';
+        this.pendingFit = true;            // show the whole level once the canvas has its editing size (first frame)
 
         this.ui = new EditorUI(this);
         this.bindEvents();
@@ -184,7 +185,6 @@ class LevelEditor {
         this.unbindEvents();
         this.ui.destroy();
         clearTimeout(this.draftTimer);
-        if (this.wrapper) this.wrapper.style.transform = this.savedTransform;
 
         const game = this.game;
         game.running = false;              // this engine's loop stops; Start builds a fresh one as it always has
@@ -192,6 +192,9 @@ class LevelEditor {
         game.Player = null;
         game.editor = null;
         game.hideHud = false;
+        game.cameraManual = false;
+        game.camera.zoom = 1;
+        game.setViewSize(Camera.VIEW_W, Camera.VIEW_H);   // the game's own view and scale again
         this.canvas.style.display = 'none';
         const welcome = document.getElementById('welcomeScreen');
         if (welcome) welcome.style.display = 'flex';
@@ -207,9 +210,12 @@ class LevelEditor {
         on(this.canvas, 'pointermove', e => this.onPointerMove(e));
         on(this.canvas, 'pointerup', e => this.onPointerUp(e));
         on(this.canvas, 'pointercancel', e => this.onPointerUp(e));
+        on(this.canvas, 'wheel', e => this.onWheel(e), {passive: false});
+        on(this.canvas, 'mousedown', e => { if (e.button === 1) e.preventDefault(); });   // no middle-click autoscroll
+        on(window, 'keyup', e => { if (e.key === ' ') this.spaceDown = false; });
         on(this.canvas, 'pointerleave', () => { if (!this.stroke) { this.mouse = null; this.ui.setCursorInfo(''); } });
         on(window, 'keydown', e => this.onKeyDown(e));
-        on(window, 'resize', () => { this.lastFit = ''; });
+        on(window, 'resize', () => { this.lastFit = ''; });   // refitted on the next frame
         on(window, 'beforeunload', e => { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } });
     }
 
@@ -224,31 +230,81 @@ class LevelEditor {
         this.fitCanvas();
     }
 
-    /**
-     * The game's resizer scales the canvas by screen size only. The editor needs it to fit the space left between
-     * the panels (and to fill the window while playtesting), so it sets its own scale on the same wrapper and
-     * hands the old one back on exit. Pointer maths uses getBoundingClientRect, so it is right at any scale.
-     */
-    fitCanvas() {
-        if (!this.wrapper) return;
-        const c = this.canvas;
-        const editing = this.mode === 'edit';
-        const key = [innerWidth, innerHeight, c.width, c.height, this.mode].join();
-        if (key === this.lastFit) return;
-        this.lastFit = key;
-        const left = editing ? EditorUI.LEFT : 0, right = editing ? EditorUI.RIGHT : 0;
-        const top = editing ? EditorUI.TOP : 0, bottom = editing ? EditorUI.BOTTOM : 0;
-        const scale = Math.min((innerWidth - left - right - 16) / c.width, (innerHeight - top - bottom - 16) / c.height, 1);
-        this.wrapper.style.transform = `translate(${(left - right) / 2}px, ${(top - bottom) / 2}px) scale(${scale})`;
+    viewKey() {
+        return [innerWidth, innerHeight, this.mode].join();
     }
 
-    /** Pointer position in level pixels, whatever the CSS scale of the canvas is. */
+    fitCanvas() {
+        if (this.wrapper && this.viewKey() !== this.lastFit) this.applyView();
+    }
+
+    /**
+     * Gives the canvas the size that suits the mode. Editing: exactly the space between the panels, drawn 1:1 (a level
+     * can be far bigger than that, so the editor pans and zooms a camera over it). Playtest: the game's own fixed view,
+     * scaled to the window, so a playtest looks and scrolls exactly like the real game.
+     */
+    applyView() {
+        if (!this.wrapper) return;
+        this.lastFit = this.viewKey();
+        const game = this.game, cam = game.camera;
+        if (this.mode === 'edit') {
+            const w = Math.max(300, innerWidth - EditorUI.LEFT - EditorUI.RIGHT);
+            const h = Math.max(300, innerHeight - EditorUI.TOP - EditorUI.BOTTOM);
+            const cx = cam.x + cam.worldW / 2, cy = cam.y + cam.worldH / 2;   // keep looking at the same spot
+            game.setViewSize(w, h);
+            this.wrapper.style.transform = `translate(${(EditorUI.LEFT - EditorUI.RIGHT) / 2}px, ${(EditorUI.TOP - EditorUI.BOTTOM) / 2}px)`;
+            if (this.pendingFit) {
+                this.pendingFit = false;
+                this.fitView();
+            } else {
+                cam.x = cx - cam.worldW / 2;
+                cam.y = cy - cam.worldH / 2;
+            }
+        } else {
+            game.setViewSize(Camera.VIEW_W, Camera.VIEW_H);   // also fits it to the window, like the game
+        }
+    }
+
+    /** Show the whole level. */
+    fitView() {
+        this.game.camera.fit(this.map.pixelWidth, this.map.pixelHeight);
+    }
+
+    zoom100() {
+        this.game.camera.setZoom(1);
+        this.clampView();
+    }
+
+    /** Keep some of the level on screen, so panning can't lose it. */
+    clampView() {
+        const cam = this.game.camera, vw = cam.worldW, vh = cam.worldH;
+        cam.x = Math.min(Math.max(cam.x, -vw * 0.75), this.map.pixelWidth - vw * 0.25);
+        cam.y = Math.min(Math.max(cam.y, -vh * 0.75), this.map.pixelHeight - vh * 0.25);
+    }
+
+    /** Pointer position: on the canvas (sx, sy), in the level (px, py, col, row), and `scale` screen pixels per level pixel. */
     toLevel(ev) {
-        const r = this.canvas.getBoundingClientRect();
-        const px = (ev.clientX - r.left) * this.canvas.width / r.width;
-        const py = (ev.clientY - r.top) * this.canvas.height / r.height;
+        const c = this.game.pointerToCanvas(ev);
+        const w = this.game.camera.screenToWorld(c.x, c.y);
         const size = LevelModel.TILE_SIZE;
-        return {px, py, col: Math.floor(px / size), row: Math.floor(py / size), scale: r.width / this.canvas.width};
+        const r = this.canvas.getBoundingClientRect();
+        return {sx: c.x, sy: c.y, px: w.x, py: w.y, col: Math.floor(w.x / size), row: Math.floor(w.y / size),
+            scale: (r.width / this.canvas.width) * this.game.camera.zoom};
+    }
+
+    onWheel(ev) {
+        if (this.mode !== 'edit') return;
+        ev.preventDefault();
+        const c = this.game.pointerToCanvas(ev);
+        this.game.camera.zoomAt(c.x, c.y, Math.exp(-ev.deltaY * 0.0015));
+        this.clampView();
+        if (this.mouse) this.ui.setCursorInfo(this.cursorText(this.toLevel(ev)));
+    }
+
+    cursorText(p) {
+        const id = LevelModel.tileAt(this.level, p.col, p.row);
+        return `tile ${p.col}, ${p.row}    px ${Math.round(p.px)}, ${Math.round(p.py)}` +
+            (id === null ? '' : `    ${LevelModel.tileName(id)}`) + `    zoom ${Math.round(this.game.camera.zoom * 100)}%`;
     }
 
     // ---- state changes -----------------------------------------------------------------------------------------------
@@ -354,7 +410,7 @@ class LevelEditor {
     syncUI() {
         this.ui.syncToolState();
         this.ui.syncInspector();
-        this.ui.setHint(this.hintText());
+        this.ui.setHint(this.hintText() + '   ·   Wheel: zoom   ·   Space+drag or middle-drag: pan   ·   0: fit   ·   1: 100%');
     }
 
     hintText() {
@@ -379,6 +435,12 @@ class LevelEditor {
         const p = this.toLevel(ev);
         this.mouse = p;
         const erase = ev.button === 2;
+
+        // Pan: middle button, or Space held with the left button
+        if (ev.button === 1 || (this.spaceDown && ev.button === 0)) {
+            this.stroke = {kind: 'pan', last: {x: p.sx, y: p.sy}};
+            return;
+        }
 
         if (ev.altKey || this.tool === 'pick') {
             const id = LevelModel.tileAt(this.level, p.col, p.row);
@@ -430,12 +492,16 @@ class LevelEditor {
         if (this.mode !== 'edit') return;
         const p = this.toLevel(ev);
         this.mouse = p;
-        const id = LevelModel.tileAt(this.level, p.col, p.row);
-        this.ui.setCursorInfo(`tile ${p.col}, ${p.row}    px ${Math.round(p.px)}, ${Math.round(p.py)}` +
-            (id === null ? '' : `    ${LevelModel.tileName(id)}`));
+        this.ui.setCursorInfo(this.cursorText(p));
 
         const s = this.stroke;
         if (!s) return;
+        if (s.kind === 'pan') {
+            this.game.camera.panBy(p.sx - s.last.x, p.sy - s.last.y);
+            s.last = {x: p.sx, y: p.sy};
+            this.clampView();
+            return;
+        }
         if (s.kind === 'brush') {
             let changed = false;
             for (const [c, r] of this.cellsBetween(s.last.col, s.last.row, p.col, p.row)) {
@@ -569,6 +635,8 @@ class LevelEditor {
         if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;   // typing in the inspector
         if (this.ui.root.querySelector('[data-modal]')) return;
 
+        if (ev.key === ' ') { ev.preventDefault(); this.spaceDown = true; return; }   // hold Space and drag to pan
+
         const k = ev.key.toLowerCase();
         if (ev.ctrlKey || ev.metaKey) {
             if (k === 'z') { ev.preventDefault(); ev.shiftKey ? this.redo() : this.undo(); }
@@ -585,6 +653,10 @@ class LevelEditor {
             case 'i': this.setTool('pick'); break;
             case 's': this.setTool('select'); break;
             case 'g': this.showGrid = !this.showGrid; this.ui.gridBox.checked = this.showGrid; break;
+            case '0': this.fitView(); break;
+            case '1': this.zoom100(); break;
+            case '=': case '+': this.game.camera.setZoom(this.game.camera.zoom * 1.25); this.clampView(); break;
+            case '-': this.game.camera.setZoom(this.game.camera.zoom * 0.8); this.clampView(); break;
             case 'p': this.startPlaytest(); break;
             case 'escape':
                 if (this.stroke) this.endStroke();
@@ -592,10 +664,20 @@ class LevelEditor {
                 else this.select(null);
                 break;
             case 'delete': case 'backspace': ev.preventDefault(); this.deleteSelection(); break;
-            case 'arrowleft': ev.preventDefault(); this.nudgeSelection(-step, 0); break;
-            case 'arrowright': ev.preventDefault(); this.nudgeSelection(step, 0); break;
-            case 'arrowup': ev.preventDefault(); this.nudgeSelection(0, -step); break;
-            case 'arrowdown': ev.preventDefault(); this.nudgeSelection(0, step); break;
+            case 'arrowleft': ev.preventDefault(); this.arrow(-1, 0); break;
+            case 'arrowright': ev.preventDefault(); this.arrow(1, 0); break;
+            case 'arrowup': ev.preventDefault(); this.arrow(0, -1); break;
+            case 'arrowdown': ev.preventDefault(); this.arrow(0, 1); break;
+        }
+    }
+
+    /** Arrow keys nudge the selection, or pan the view when nothing is selected. */
+    arrow(dx, dy) {
+        if (this.selection) {
+            this.nudgeSelection(dx * this.snapStep, dy * this.snapStep);
+        } else {
+            this.game.camera.panBy(-dx * 100, -dy * 100);
+            this.clampView();
         }
     }
 
@@ -621,18 +703,27 @@ class LevelEditor {
     drawOverlay(ctx) {
         if (this.mode !== 'edit') return;
         const size = LevelModel.TILE_SIZE;
-        const w = this.canvas.width, h = this.canvas.height;
+        const cam = this.game.camera;
+        const mapW = this.map.pixelWidth, mapH = this.map.pixelHeight;
         ctx.save();
 
-        if (this.showGrid) {
-            ctx.lineWidth = 1;
-            for (let c = 0; c <= w / size; c++) {
-                ctx.strokeStyle = c % 5 === 0 ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.09)';
-                ctx.beginPath(); ctx.moveTo(c * size + 0.5, 0); ctx.lineTo(c * size + 0.5, h); ctx.stroke();
+        if (this.showGrid && cam.zoom >= 0.15) {
+            // Only the lines that are on screen and inside the level: every tile when zoomed in, every 5th when out
+            const v = cam.visibleRect();
+            const x0 = Math.max(0, v.left), x1 = Math.min(mapW, v.right), y0 = Math.max(0, v.top), y1 = Math.min(mapH, v.bottom);
+            const minor = cam.zoom >= 0.5, o = 0.5 / cam.zoom;
+            ctx.lineWidth = 1 / cam.zoom;             // one screen pixel wide at any zoom
+            for (let c = Math.floor(x0 / size); c <= Math.ceil(x1 / size); c++) {
+                const major = c % 5 === 0;
+                if (!major && !minor) continue;
+                ctx.strokeStyle = major ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.09)';
+                ctx.beginPath(); ctx.moveTo(c * size + o, y0); ctx.lineTo(c * size + o, y1); ctx.stroke();
             }
-            for (let r = 0; r <= h / size; r++) {
-                ctx.strokeStyle = r % 5 === 0 ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.09)';
-                ctx.beginPath(); ctx.moveTo(0, r * size + 0.5); ctx.lineTo(w, r * size + 0.5); ctx.stroke();
+            for (let r = Math.floor(y0 / size); r <= Math.ceil(y1 / size); r++) {
+                const major = r % 5 === 0;
+                if (!major && !minor) continue;
+                ctx.strokeStyle = major ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.09)';
+                ctx.beginPath(); ctx.moveTo(x0, r * size + o); ctx.lineTo(x1, r * size + o); ctx.stroke();
             }
         }
 
@@ -793,13 +884,17 @@ class LevelEditor {
         const game = this.game;
         this.mode = 'playtest';
         this.stroke = null;
+        this.spaceDown = false;
+        this.editCamera = {x: game.camera.x, y: game.camera.y, zoom: game.camera.zoom};
+        game.cameraManual = false;                 // in a playtest the camera follows the player, as in the game
+        game.camera.zoom = 1;
         this.savedLevelUI = game.levelUI;
         this.playtestUI = new PlaytestUI(this);
         game.levelUI = this.playtestUI;
         game.hideHud = false;
         if (document.activeElement) document.activeElement.blur();   // a focused button would eat Space (jump)
         this.ui.setVisible(false);
-        this.lastFit = '';
+        this.applyView();                          // the game's own view, before the level is built and the camera snapped
         this.restartPlaytest();
     }
 
@@ -824,12 +919,14 @@ class LevelEditor {
         this.mode = 'edit';
         game.levelUI = this.savedLevelUI;
         game.hideHud = true;
+        game.cameraManual = true;
         game.keys = {};
         game.Player = null;
         game.entities = [this.map, this.overlay];
         if (game.timer) game.timer.reset();                // a death stops it, and a stopped timer logs on every tick
         this.ui.setVisible(true);
-        this.lastFit = '';
+        this.applyView();                                  // back to the editing view...
+        Object.assign(game.camera, this.editCamera);       // ...looking where it was
         this.syncUI();
     }
 
@@ -859,6 +956,7 @@ class LevelEditor {
         this.previews.clear();
         this.clearDraft();
         this.afterChange();
+        this.fitView();
     }
 
     newLevel() {
