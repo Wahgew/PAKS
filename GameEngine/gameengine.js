@@ -20,6 +20,11 @@ class GameEngine {
         // Everything that will be updated and drawn each frame
         this.entities = [];
 
+        // Which part of the level the canvas shows (camera.js). The canvas is a fixed-size view of the level, not as big
+        // as the level, so tiles and sprites stay the same size however large the level is.
+        this.camera = new Camera();
+        this.cameraManual = false;   // the level editor drives the camera itself while editing
+
         // Information on the input
         this.click = null;
         this.mouse = null;
@@ -34,6 +39,7 @@ class GameEngine {
     // use async to wait for the DB to initialize
     async init(ctx) {
         this.ctx = ctx;
+        this.setViewSize(Camera.VIEW_W, Camera.VIEW_H);
         this.startInput();
         this.initDebugMode();
         this.timer = new Timer();
@@ -204,11 +210,8 @@ class GameEngine {
             this.keys[event.key.toLowerCase()] = false;
         });
 
-        // Mouse events remain on canvas
-        const getXandY = e => ({
-            x: e.clientX - this.ctx.canvas.getBoundingClientRect().left,
-            y: e.clientY - this.ctx.canvas.getBoundingClientRect().top
-        });
+        // Mouse events remain on canvas. Positions are in canvas pixels (the canvas is scaled by CSS to fit the window)
+        const getXandY = e => this.pointerToCanvas(e);
 
         this.ctx.canvas.addEventListener("mousemove", e => {
             this.mouse = getXandY(e);
@@ -267,6 +270,57 @@ class GameEngine {
         this.entities.push(entity);
     }
 
+    /**
+     * Give the canvas a fixed size (the view of the level) instead of the level's size. Assigning canvas.width also
+     * resets the context, so image smoothing is set again here: the old code resized the canvas every frame, which
+     * kept smoothing on, and the game is drawn that way (main.js turns it off once, which never lasted).
+     */
+    setViewSize(w, h) {
+        const canvas = this.ctx.canvas;
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
+        this.ctx.imageSmoothingEnabled = true;
+        this.camera.setView(w, h);
+        if (typeof window !== 'undefined' && window.fitGameCanvas) window.fitGameCanvas();
+    }
+
+    /** A mouse/pointer event's position in canvas pixels, correct at any CSS scale of the canvas. */
+    pointerToCanvas(e) {
+        const canvas = this.ctx.canvas;
+        const r = canvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - r.left) * canvas.width / (r.width || 1),
+            y: (e.clientY - r.top) * canvas.height / (r.height || 1),
+        };
+    }
+
+    /** A mouse/pointer event's position in the level (through the camera). */
+    pointerToWorld(e) {
+        const p = this.pointerToCanvas(e);
+        return this.camera.screenToWorld(p.x, p.y);
+    }
+
+    // The level being shown, if any: its size in pixels and the player to follow
+    cameraTarget() {
+        const map = this.entities.find(entity => entity instanceof drawMap);
+        const p = this.Player;
+        if (!map || !map.map || !p) return null;
+        return {cx: p.x + p.width / 2, cy: p.y + p.height / 2, mapW: map.pixelWidth, mapH: map.pixelHeight};
+    }
+
+    /** Ease the camera toward the player. */
+    updateCamera() {
+        if (this.cameraManual) return;
+        const t = this.cameraTarget();
+        if (t) this.camera.follow(t.cx, t.cy, t.mapW, t.mapH, this.clockTick || 0);
+    }
+
+    /** Put the camera on the player at once: for the moment a level is loaded. */
+    snapCamera() {
+        const t = this.cameraTarget();
+        if (t) this.camera.snapTo(t.cx, t.cy, t.mapW, t.mapH);
+    }
+
     draw() {
         if (!this.ctx) {
             console.error("No context found in GameEngine");
@@ -280,13 +334,18 @@ class GameEngine {
             transform: this.ctx.getTransform()
         }); */
     
-        // Clear with a visible color first to verify clearing works
-        this.ctx.fillStyle = 'white';
+        // Black outside the level: a level smaller than the view is centred in it, and drawMap paints only its own area
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        this.ctx.fillStyle = 'black';
         this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
     
         // Reset any transformations
         this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     
+        // World space: the map and everything in the level are drawn through the camera
+        this.ctx.save();
+        this.ctx.setTransform(...this.camera.transform());
+
         // Draw from front to back (map first, then entities)
         // Find and draw map first
         const mapEntity = this.entities.find(entity => entity instanceof drawMap);
@@ -311,6 +370,9 @@ class GameEngine {
                 this.ctx.restore();
             }
         });
+
+        // Screen space again: the timer, the death/complete screens and debug text stay put whatever the camera does
+        this.ctx.restore();
     
         // draw timer with elevator theme
         if (this.timer && !this.hideHud) {   // the level editor hides the floor-time panel while editing
@@ -383,7 +445,8 @@ class GameEngine {
             let offsetX = 35; // Adjust to prevent overlap with cursor
             let offsetY = 50;
     
-            this.ctx.fillText(`(${this.mouse.x}, ${this.mouse.y})`, this.mouse.x + offsetX, this.mouse.y + offsetY);
+            const w = this.camera.screenToWorld(this.mouse.x, this.mouse.y);   // the level position under the cursor
+            this.ctx.fillText(`(${Math.round(w.x)}, ${Math.round(w.y)})`, this.mouse.x + offsetX, this.mouse.y + offsetY);
         }
     }
 
@@ -411,6 +474,8 @@ class GameEngine {
                 this.entities.splice(i, 1);
             }
         }
+
+        this.updateCamera();
     }
 
     loop() {

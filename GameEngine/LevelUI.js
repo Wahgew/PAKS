@@ -521,10 +521,8 @@ class LevelUI {
                 // Only process clicks if either death or level complete is showing
                 if (!this.isDisplayingComplete && !this.isDisplayingDeath) return;
 
-                const rect = this.gameEngine.ctx.canvas.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
-                const clickPoint = { x: clickX, y: clickY };
+                // In canvas pixels whatever the CSS scale (the old unscaled maths put the buttons in the wrong place)
+                const clickPoint = this.gameEngine.pointerToCanvas(e);
 
                 if (this.isPointInButton(clickPoint, leftButtonX, buttonY, buttonSize)) {
                     this.handleButtonAction('menu');

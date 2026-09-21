@@ -114,6 +114,15 @@ class drawMap {
         update() {
         }
 
+        /** The level's size in pixels. The canvas is a fixed-size view of it (see camera.js), not this size. */
+        get pixelWidth() {
+                return this.map && this.map[0] ? this.map[0].length * this.drawSize : 0;
+        }
+
+        get pixelHeight() {
+                return this.map ? this.map.length * this.drawSize : 0;
+        }
+
         loadMap (tiles) {
                 if (!Array.isArray(tiles)) {
                         console.error('drawMap.loadMap: expected a 2D tile array');
@@ -216,7 +225,6 @@ class drawMap {
                         return;
                 }
 
-                this.#setCanvasSize(ctx.canvas);
                 this.#clearCanvas(ctx);
                 this.#drawMap(ctx);
         }
@@ -227,9 +235,15 @@ class drawMap {
                         return;
                 }
 
-                // Only draw the tiles that are visible
-                for (let i = 0; i < this.map.length; i++) {
-                        for (let j = 0; j < this.map[i].length; j++) {
+                // Only draw the tiles that are visible: a level can be far bigger than the view
+                const view = this.game && this.game.camera ? this.game.camera.visibleRect() : null;
+                const size = this.drawSize;
+                const rowFrom = view ? Math.max(0, Math.floor(view.top / size)) : 0;
+                const rowTo = view ? Math.min(this.map.length - 1, Math.floor(view.bottom / size)) : this.map.length - 1;
+                for (let i = rowFrom; i <= rowTo; i++) {
+                        const colFrom = view ? Math.max(0, Math.floor(view.left / size)) : 0;
+                        const colTo = view ? Math.min(this.map[i].length - 1, Math.floor(view.right / size)) : this.map[i].length - 1;
+                        for (let j = colFrom; j <= colTo; j++) {
                                 if (this.map[i][j] === 1) {  // If it's a solid tile
                                         const x = j * this.drawSize;
                                         const y = i * this.drawSize;
@@ -290,18 +304,14 @@ class drawMap {
         #clearCanvas(ctx) {
                 if (!ctx) return;
                 try {
+                        // Just the level's own area: outside it the engine leaves the canvas black
                         ctx.fillStyle = this.colors[this.random] 
-                        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                        ctx.fillRect(0, 0, this.pixelWidth, this.pixelHeight);
                 } catch (e) {
                         console.error("Error in clearCanvas:", e);
                 }
         }
 
-        #setCanvasSize(canvas) {
-                if (!canvas) return;
-                canvas.height = this.map.length * this.drawSize;
-                canvas.width = this.map[0].length * this.drawSize;
-        }
 }
 
 /* Map template*/
