@@ -11,14 +11,13 @@ const M = LevelModel;
 const LEVELS = Array.from({length: 17}, (_, n) => n);
 const plain = v => JSON.parse(JSON.stringify(v));   // strip the vm realm's prototypes before deepEqual
 
-test('every real level validates with no errors and no warnings (level 14 may still carry its old reversed big blocks)', () => {
+test('every real level validates with no errors and no warnings', () => {
+    // Level 14 once had two BigBlocks with reversed corners (y2 < y): drawn, but never solid. They were fixed by hand,
+    // and a warning here (or a spawn inside a block, or anything outside the map) means a level has gone wrong again.
     for (const n of LEVELS) {
         const {errors, warnings} = M.validate(loadLevel(n));
         assert.deepEqual(errors, [], `level ${n} errors`);
-        // Level 14 once had two BigBlocks with reversed corners (y2 < y), which the game draws but never collides
-        // with. That is fixed in the data now; the only warning still accepted anywhere is that one.
-        const leftover = warnings.filter(w => !(n === 14 && /BigBlock/.test(w.path) && /never solid/.test(w.message)));
-        assert.deepEqual(leftover, [], `level ${n} warnings`);
+        assert.deepEqual(warnings, [], `level ${n} warnings`);
     }
 });
 
@@ -96,7 +95,7 @@ test('entity boxes match the real entity classes on every entity in every level'
     const loader = get('LevelLoader');
     const game = {keys: {}, clockTick: 1 / 60, entities: [], options: {debugging: false},
         ctx: {canvas: {addEventListener() {}, removeEventListener() {}}}};
-    // Level 14's reversed big blocks get a negative-size box in the real class; compare the rectangle that is drawn
+    // A reversed big block gets a negative-size box in the real class (level 14 used to have two); compare the rectangle that is drawn
     const norm = b => ({x: Math.min(b.x, b.x + b.w), y: Math.min(b.y, b.y + b.h), w: Math.abs(b.w), h: Math.abs(b.h)});
     const boxOf = e => norm(e.BB ? {x: e.BB.x, y: e.BB.y, w: e.BB.width, h: e.BB.height} : {x: e.x, y: e.y, w: e.width, h: e.height});
 

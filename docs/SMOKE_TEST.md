@@ -139,7 +139,7 @@ Run `node --test` from the repo root first (all tests must pass; they cover coll
 
 ## 14. Slopes and Curves (level 0)
 
-Tick **Debug**, pick **Floor 0**. The level is 76 tiles wide. Along the bottom of the left room, left to right: a pyramid (2-tile ramp up, plateau, ramp down), a half-pipe between two 1-tile blocks, a plateau with rounded shoulders, a row of downward-pointing ceiling triangles, and a ramp against the right wall. The spawn drops you at the left of the pyramid. Untick Debug at some point and repeat the movement checks: dying is off in debug, and hazards (the projectile launcher at the right) are live without it.
+Tick **Debug**, pick **Floor 0**. The level is 76 tiles wide. Along the bottom of the left part of the level, left to right: a pyramid (2-tile ramp up, plateau, ramp down), a half-pipe between two 1-tile blocks, a plateau with rounded shoulders, a row of downward-pointing ceiling triangles, and a ramp against the right wall. The spawn drops you at the left of the pyramid. Untick Debug at some point and repeat the movement checks: dying is off in debug, and hazards (the projectile launcher at the right) are live without it.
 
 - [ ] Every slope and curve draws in the level's block colour with no gaps or seams against neighbouring blocks. With Debug on, red outlines follow each shape.
 - [ ] Walk and run (`Shift`) up the pyramid ramp: your speed does **not** drop at any tile seam, you never leave the ground, and your feet stay on the surface. Slopes must not change how fast you go (no slowing uphill, no speeding up downhill).
@@ -153,7 +153,7 @@ Tick **Debug**, pick **Floor 0**. The level is 76 tiles wide. Along the bottom o
 - [ ] Ramp against the right wall: you can climb it and step onto the plateau at its top with no stall.
 - [ ] Hazards still work around slopes: a projectile fired left by the launcher is destroyed when it hits a slope or curve, and spikes are stopped by them.
 - [ ] Run into the far right wall and the map edges next to slopes: you stay on the floor (no popping upward).
-- [ ] **Bay for the gentle and steep shapes** (right of the wall at x=1125; get there with click-to-teleport or through the doorway in that wall, 75px high, just above the ledge). Left to right at floor level: a gentle pyramid (two 26.6° steps up, a plateau, two steps down), a V-shaped pit between two steep faces, and a tunnel whose ceiling dips to one tile above head height.
+- [ ] **Bay for the gentle and steep shapes** (the right part of the level, columns 46-75, x=1150 and up; walk there or use click-to-teleport). Left to right at floor level: a gentle pyramid (two 26.6° steps up, a plateau, two steps down), a V-shaped pit between two steep faces, and a tunnel whose ceiling dips to one tile above head height.
 - [ ] Gentle pyramid: run (`Shift`) up and over it: your speed never dips, you stay grounded the whole way, and your feet stay on the surface. Standing on it you don't slide. A jump from it feels like a jump from flat ground.
 - [ ] V-pit: drop in from above. You land on its floor, and walking into either face stops you like a wall: you can't climb it, and you **don't cling or wall-jump** off it. You can jump out.
 - [ ] Ceiling tunnel: walk through at standing height (25px to spare at the pinch); a jump under it stops your rise at the underside instead of passing through.
@@ -185,7 +185,7 @@ Click **LEVEL EDITOR** on the title screen. Serve over HTTP as usual. Use a clea
 **Undo and problems**
 - [ ] `Ctrl+Z` / `Ctrl+Y` (or `Ctrl+Shift+Z`): a whole brush or move drag is one step, and so is each inspector edit.
 - [ ] Set the exit's levers needed above the number of levers: the Problems list says the exit can never open, Playtest is disabled, and pressing `P` explains why instead of starting. Clicking a problem selects the thing it is about.
-- [ ] Open **Floor 14**: two warnings appear (see Known Issues), and it can still be played.
+- [ ] Open **Floor 14**: it opens with no errors or warnings (its big blocks are drawn and solid) and can be played.
 
 **Playtest** (`P` or the Playtest button)
 - [ ] The panels hide and the level fills the window with the floor timer. You spawn at the marker and move, jump, wall jump and slide exactly as in the game.
@@ -207,7 +207,7 @@ Click **LEVEL EDITOR** on the title screen. Serve over HTTP as usual. Use a clea
 - **M / V keys:** the volume panel is on `V`; `M` is only "go to menu" on the death/complete screens. Verify `M` there no longer opens the volume panel.
 - **Level 16 lasers:** `direction: 'HORTIZONTAL'` typo was fixed in `levelconfig.js` and is corrected in the JSON files. Confirm all black lasers render and kill the player.
 - **Completing level 16:** The "continue" button now shows a "Game Complete" screen with a "Home" button that returns to the welcome screen. Verify this works and no crash occurs.
-- **Level 14 reversed big blocks:** two `BigBlock`s in level 14 have their corners the wrong way round, so the game draws them but never collides with them. The editor lists them as warnings. Fixing the data would make them solid and change the level, so it is left as is for now.
+- **Level 14 big blocks:** they used to have reversed corners (drawn but never solid) and were fixed by hand, so they now collide. Check the two big slabs along the top and the blocks on the sides really are solid.
 - **Editor and the title screen:** exiting the editor returns to the title screen; the level being edited is not kept (save it first, or restore it from the draft).
 - **Level 14 duplicate levers:** Two lever objects are placed at identical coordinates. Confirm the exit door opens after collecting the correct number of unique levers.
 - **Corner clipping (pre-existing):** a diagonal jump or fall into the corner of a full block can nick the corner by a few pixels for a frame before it resolves. Not a slope bug; the original game does it too.
