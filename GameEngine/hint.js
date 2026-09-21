@@ -10,6 +10,7 @@
 class Hint {
     static LINE_HEIGHT = 30;
     static PADDING = 14;
+    static DIM = 0.8;          // opacity of a sign the player is not near: still easy to read on a light background
     static KEY_PAD = 7;        // extra width either side of a key cap's label
     // monospace on purpose: every glyph has the same width, so a sign lays out the same on every machine and the
     // tests can check that its text fits without a canvas
@@ -52,7 +53,7 @@ class Hint {
         this.width = w;
         this.height = h;
         this.BB = new BoundingBox(x, y, w, h);
-        this.glow = 0.55;           // how bright the sign is drawn, 0.55 (far) to 1 (near)
+        this.glow = Hint.DIM;       // how bright the sign is drawn: Hint.DIM (player far away) to 1 (player near)
         this.laidOut = null;        // {w, text, lines}: the wrapped text, kept until the box or the text changes
     }
 
@@ -61,7 +62,7 @@ class Hint {
         const reach = 90;
         const near = p && p.x + p.width > this.x - reach && p.x < this.x + this.w + reach &&
             p.y + p.height > this.y - reach && p.y < this.y + this.h + reach;
-        const target = near ? 1 : 0.55;
+        const target = near ? 1 : Hint.DIM;
         this.glow += (target - this.glow) * Math.min(1, 8 * (this.game.clockTick || 0));
     }
 
