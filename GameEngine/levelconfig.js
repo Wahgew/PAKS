@@ -14,10 +14,13 @@ class LevelConfig {
         this.game = gameEngine;
         this.currentLevel = 1; // sets the current level
         this.TILE_SIZE = 25;
+        this.tutorial = false; // true while the tutorial (which is not a numbered floor) is what's being played
     }
 
     loadLevel(levelNumber) {
         this.currentLevel = levelNumber;
+        this.tutorial = false;
+        this.game.hideHud = false; // the tutorial hides the floor-time panel
 
         const levelConfig = window.LEVEL_LOADER
             ? window.LEVEL_LOADER.getLevelEntities(levelNumber, this.game, this.TILE_SIZE)
@@ -29,6 +32,26 @@ class LevelConfig {
         }
 
         this.assemble(levelConfig);
+        return true;
+    }
+
+    /**
+     * Builds the tutorial (levels/tutorial.json, held by the LevelLoader under Tutorial.LEVEL_KEY). It is not a
+     * numbered floor, so currentLevel, saved progress and best times are left alone, and it is untimed: the
+     * floor-time panel is hidden. LevelUI checks `tutorial` to skip the best-time write and to lead on to floor 1.
+     */
+    loadTutorial() {
+        const levelConfig = window.LEVEL_LOADER
+            ? window.LEVEL_LOADER.getLevelEntities(Tutorial.LEVEL_KEY, this.game, this.TILE_SIZE)
+            : null;
+        if (!levelConfig) {
+            console.error('LevelConfig.loadTutorial: no tutorial level data — ensure the game is served over HTTP (not file://).');
+            return false;
+        }
+
+        this.assemble(levelConfig);
+        this.tutorial = true;
+        this.game.hideHud = true;
         return true;
     }
 

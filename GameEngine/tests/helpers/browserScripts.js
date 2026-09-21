@@ -20,10 +20,15 @@ function loadLevel(n) {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
+// A level file that is not a numbered floor, by its file name without .json (the tutorial)
+function loadLevelFile(name) {
+    return JSON.parse(fs.readFileSync(path.join(ROOT, 'levels', `${name}.json`), 'utf8'));
+}
+
 // A frozen copy of a level for tests that depend on its exact layout. Real levels are meant to be edited (in the
 // level editor, by hand), so a test that hard-codes coordinates must not read the live file.
 function loadFixture(name) {
     return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', `${name}.json`), 'utf8'));
 }
 
-module.exports = {loadBrowserScripts, loadLevel, loadFixture};
+module.exports = {loadBrowserScripts, loadLevel, loadLevelFile, loadFixture};

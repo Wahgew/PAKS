@@ -137,6 +137,14 @@ class LevelLoader {
                     reverseTime: e.reverseTime ?? 0,
                 });
 
+            case 'Hint':
+                return new Hint({
+                    gameEngine: game,
+                    x: e.x, y: e.y,
+                    w: e.w, h: e.h,
+                    text: e.text ?? '',
+                });
+
             default:
                 console.warn('LevelLoader: unknown entity type', e.type);
                 return null;

@@ -28,7 +28,7 @@ const LevelModel = (() => {
     const num = (key, label, def, extra = {}) => ({key, label, kind: 'number', default: def, ...extra});
     const bool = (key, label, def) => ({key, label, kind: 'bool', default: def});
     const oneOf = (key, label, options, def, extra = {}) => ({key, label, kind: 'enum', options, default: def, ...extra});
-    const text = (key, label, def) => ({key, label, kind: 'text', default: def});
+    const text = (key, label, def, extra = {}) => ({key, label, kind: 'text', default: def, ...extra});
 
     const X = num('x', 'X', 0, {required: true});
     const Y = num('y', 'Y', 0, {required: true});
@@ -106,6 +106,13 @@ const LevelModel = (() => {
             label: 'Lever',
             fields: [X, Y, ...MOVEMENT],
             bounds: d => ({x: d.x, y: d.y, w: 23, h: 53}),
+        },
+        Hint: {
+            label: 'Hint sign',
+            // A sign with instructions (the tutorial is made of them). [Key] in the text is drawn as a key cap.
+            fields: [X, Y, num('w', 'Width', 300, {min: 40, required: true}), num('h', 'Height', 80, {min: 30, required: true}),
+                text('text', 'Text', 'Hold [Shift] to sprint', {required: true})],
+            bounds: d => ({x: d.x, y: d.y, w: d.w, h: d.h}),
         },
     };
 

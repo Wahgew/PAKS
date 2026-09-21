@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Rewrites GameEngine/levels/level_XX.json in the canonical format the level editor saves (one tile row and one
+// Rewrites GameEngine/levels/level_XX.json (and tutorial.json) in the canonical format the level editor saves (one tile row and one
 // entity per line), so a diff of a level shows exactly what changed. Data is never altered, only its layout.
 //
 //   node scripts/format-levels.js           rewrite every level file
@@ -12,7 +12,7 @@ const dir = path.join(__dirname, '..', 'GameEngine', 'levels');
 const check = process.argv.includes('--check');
 let stale = 0;
 
-for (const name of fs.readdirSync(dir).filter(f => /^level_\d+\.json$/.test(f)).sort()) {
+for (const name of fs.readdirSync(dir).filter(f => /^(level_\d+|tutorial)\.json$/.test(f)).sort()) {
     const file = path.join(dir, name);
     const before = fs.readFileSync(file, 'utf8');
     const after = LevelModel.serialize(JSON.parse(before));

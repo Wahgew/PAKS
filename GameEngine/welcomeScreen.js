@@ -86,19 +86,26 @@ class WelcomeScreen {
 
         this.welcomeContainer.appendChild(buttonContainer);
 
-        // Level editor entry: a plain elevator-panel button under the picture buttons
-        const editorButton = document.createElement("button");
-        editorButton.id = "levelEditorButton";
-        editorButton.textContent = "LEVEL EDITOR";
-        editorButton.style.cssText = "margin-top:24px;padding:8px 22px;background:#333;color:#ffcc00;border:2px solid #555;" +
-            "border-radius:6px;cursor:pointer;font:16px 'Molot',sans-serif;letter-spacing:2px;transition:0.2s";
-        editorButton.addEventListener("mouseover", () => { editorButton.style.background = "#444"; editorButton.style.borderColor = "#ffcc00"; });
-        editorButton.addEventListener("mouseout", () => { editorButton.style.background = "#333"; editorButton.style.borderColor = "#555"; });
-        editorButton.addEventListener("click", () => {
-            this.hideWelcomeScreen();
-            startEditor();
-        });
-        this.welcomeContainer.appendChild(editorButton);
+        // Plain elevator-panel buttons under the picture buttons: replay the tutorial, and the level editor
+        const panelButtons = document.createElement("div");
+        panelButtons.style.cssText = "display:flex;gap:16px;margin-top:24px";
+        const panelButton = (id, label, onClick) => {
+            const button = document.createElement("button");
+            button.id = id;
+            button.textContent = label;
+            button.style.cssText = "padding:8px 22px;background:#333;color:#ffcc00;border:2px solid #555;" +
+                "border-radius:6px;cursor:pointer;font:16px 'Molot',sans-serif;letter-spacing:2px;transition:0.2s";
+            button.addEventListener("mouseover", () => { button.style.background = "#444"; button.style.borderColor = "#ffcc00"; });
+            button.addEventListener("mouseout", () => { button.style.background = "#333"; button.style.borderColor = "#555"; });
+            button.addEventListener("click", () => {
+                this.hideWelcomeScreen();
+                onClick();
+            });
+            panelButtons.appendChild(button);
+        };
+        panelButton("tutorialButton", "TUTORIAL", () => this.startTutorial());
+        panelButton("levelEditorButton", "LEVEL EDITOR", () => startEditor());
+        this.welcomeContainer.appendChild(panelButtons);
 
         document.body.appendChild(this.welcomeContainer);
     }
@@ -111,6 +118,13 @@ class WelcomeScreen {
         // Ensure the correct level is resumed
         let levelToLoad = window.CURRENT_GAME_LEVEL || 1; 
         console.log("Starting/resuming game at level:", levelToLoad);
+
+        // The very first Start begins with the tutorial. Once it has been finished or skipped it never does again
+        // (the TUTORIAL button replays it), and neither does a resume of a floor the player picked.
+        if (!window.gameEngine && levelToLoad === 1 && await this.shouldStartTutorial()) {
+            this.startTutorial();
+            return;
+        }
     
         if (window.gameEngine) {
             // Ensure the game canvas is visible
@@ -156,6 +170,23 @@ class WelcomeScreen {
             }
             startGame();
         }
+    }
+
+    // True only the first time: the tutorial was never finished or skipped, and no floor has been completed either
+    // (someone who played before the tutorial existed is not sent back to it)
+    async shouldStartTutorial() {
+        let progress = null;
+        try {
+            if (!window.LEVEL_PROGRESS) window.LEVEL_PROGRESS = new LevelProgressManager();
+            progress = await window.LEVEL_PROGRESS.getProgress();
+        } catch (error) {
+            console.warn("Could not read saved progress to decide about the tutorial:", error);
+        }
+        return Tutorial.shouldAutoStart(Tutorial.storage(), progress);
+    }
+
+    startTutorial() {
+        startGame({tutorial: true});
     }
 
     createAboutContent() {

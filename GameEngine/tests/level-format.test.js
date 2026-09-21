@@ -10,8 +10,8 @@ const LevelModel = require('../levelModel.js');
 const dir = path.join(__dirname, '..', 'levels');
 
 test('every level file is in the canonical format', () => {
-    const files = fs.readdirSync(dir).filter(f => /^level_\d+\.json$/.test(f));
-    assert.equal(files.length, 17);
+    const files = fs.readdirSync(dir).filter(f => /^(level_\d+|tutorial)\.json$/.test(f));
+    assert.equal(files.length, 18, '17 numbered floors and the tutorial');
     for (const name of files) {
         // git on Windows may check files out with CRLF; the layout is what matters
         const text = fs.readFileSync(path.join(dir, name), 'utf8').replace(/\r\n/g, '\n');
