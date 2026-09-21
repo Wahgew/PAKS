@@ -11,6 +11,38 @@
 
 const EDITOR_DRAFT_KEY = 'paks.editor.draft';
 
+// The folder Save writes built-in floors into (GameEngine/levels) is remembered in a small IndexedDB of its own.
+// It is separate from the game's saved progress and best times, and a directory handle can only live in IndexedDB.
+const EDITOR_DB = 'paks-editor';
+function editorDb() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open(EDITOR_DB, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('handles');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+async function rememberedHandle(key, value) {
+    const db = await editorDb();
+    return new Promise((resolve, reject) => {
+        const store = db.transaction('handles', value === undefined ? 'readonly' : 'readwrite').objectStore('handles');
+        const req = value === undefined ? store.get(key) : store.put(value, key);
+        req.onsuccess = () => { db.close(); resolve(req.result); };
+        req.onerror = () => { db.close(); reject(req.error); };
+    });
+}
+
+/** The levels folder itself: `dir` if it holds level_00.json, or its "levels" subfolder if that does. Otherwise null. */
+async function findLevelsFolder(dir) {
+    const has = async d => { try { await d.getFileHandle('level_00.json'); return true; } catch (e) { return false; } };
+    if (await has(dir)) return dir;
+    try {
+        const sub = await dir.getDirectoryHandle('levels');
+        if (await has(sub)) return sub;
+    } catch (e) { /* no such subfolder */ }
+    return null;
+}
+
 /**
  * Stands in for LevelUI during a playtest. Player and LevelConfig call these when you die, win or the level is
  * rebuilt. Unlike the real one it never records a time or unlocks a floor.
@@ -91,7 +123,9 @@ class LevelEditor {
         this.history = new LevelModel.History(100);
         this.name = 'Untitled';
         this.fileName = 'level_custom.json';
-        this.fileHandle = null;
+        this.fileHandle = null;         // a file picked with Open file or Save as: Save overwrites it
+        this.floor = null;              // the floor number when the level was opened with Open floor: Save overwrites its file
+        this.levelsDir = null;          // the GameEngine/levels folder, once the user has picked it
         this.dirty = false;
 
         this.tool = 'brush';
@@ -812,13 +846,14 @@ class LevelEditor {
             [{label: 'Keep editing'}, {label: 'Discard', action: next}]);
     }
 
-    load(level, {name, fileName, handle = null}) {
+    load(level, {name, fileName, handle = null, floor = null}) {
         this.level = LevelModel.clone(level);
         this.history.clear();
         this.selection = null;
         this.name = name;
         this.fileName = fileName;
         this.fileHandle = handle;
+        this.floor = floor;
         this.dirty = false;
         this.cleared = null;
         this.previews.clear();
@@ -833,7 +868,7 @@ class LevelEditor {
     openFloor(n) {
         const data = window.LEVEL_LOADER && window.LEVEL_LOADER.levels[n];
         if (!data) { this.ui.showDialog('Floor not available', [`Floor ${n} has not been loaded. Is the game being served over HTTP?`]); return; }
-        this.confirmDiscard(() => this.load(data, {name: `Floor ${n}`, fileName: `level_${String(n).padStart(2, '0')}.json`}));
+        this.confirmDiscard(() => this.load(data, {name: `Floor ${n}`, fileName: `level_${String(n).padStart(2, '0')}.json`, floor: n}));
     }
 
     async openFile() {
@@ -877,34 +912,120 @@ class LevelEditor {
         return true;
     }
 
-    /** Save straight to the file where the browser allows it (Chromium), otherwise download it. */
+    /** What Save will do right now, in words (shown as the button's tooltip). */
+    saveHint() {
+        if (!window.showSaveFilePicker) return `Save (Ctrl+S): downloads ${this.fileName}`;
+        if (this.fileHandle) return `Save (Ctrl+S): overwrites ${this.fileHandle.name}`;
+        if (this.floor !== null) return `Save (Ctrl+S): overwrites ${this.fileName} in your levels folder`;
+        return 'Save (Ctrl+S): asks where to save this new level';
+    }
+
+    /**
+     * Save overwrites the level's own file: the file it was opened from or last saved to, or, for a built-in floor,
+     * that floor's file in the levels folder. Save as always asks for a file. Where the browser has no File System
+     * Access API (Firefox, Safari) both download the level instead.
+     */
     async save(asNew) {
         const text = LevelModel.serialize(this.level);
+        let where;
         try {
-            if (window.showSaveFilePicker) {
-                if (asNew || !this.fileHandle) {
-                    this.fileHandle = await window.showSaveFilePicker({suggestedName: this.fileName, types: [{description: 'Level JSON', accept: {'application/json': ['.json']}}]});
-                }
-                const out = await this.fileHandle.createWritable();
-                await out.write(text);
-                await out.close();
-                this.fileName = this.fileHandle.name;
-            } else {
+            if (!window.showSaveFilePicker) {
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(new Blob([text], {type: 'application/json'}));
                 a.download = this.fileName;
                 a.click();
                 URL.revokeObjectURL(a.href);
+                where = `downloaded ${this.fileName}`;
+            } else if (!asNew && this.fileHandle) {
+                await this.writeTo(this.fileHandle, text);
+                where = this.fileHandle.name;
+            } else if (!asNew && this.floor !== null) {
+                const dir = await this.getLevelsDir();
+                if (!dir) return false;                                    // cancelled
+                await this.writeTo(await dir.getFileHandle(this.fileName, {create: true}), text);
+                // the game and the floor picker read this copy, so they see the change without a reload
+                if (window.LEVEL_LOADER) window.LEVEL_LOADER.store(this.floor, LevelModel.clone(this.level));
+                where = `levels/${this.fileName}`;
+            } else {
+                this.fileHandle = await window.showSaveFilePicker({suggestedName: this.fileName, types: [{description: 'Level JSON', accept: {'application/json': ['.json']}}]});
+                await this.writeTo(this.fileHandle, text);
+                this.fileName = this.fileHandle.name;
+                this.name = this.fileName;
+                this.floor = null;
+                where = this.fileName;
             }
         } catch (e) {
             if (e.name !== 'AbortError') this.ui.showDialog('Could not save', [String(e.message || e)]);
             return false;
         }
-        this.name = this.fileName;
         this.dirty = false;
         this.clearDraft();
         this.syncUI();
+        this.ui.flash(`Saved ${where}`);
         return true;
+    }
+
+    async writeTo(handle, text) {
+        const out = await handle.createWritable();
+        await out.write(text);
+        await out.close();
+    }
+
+    /**
+     * The GameEngine/levels folder, asked for once and then remembered (the browser only re-asks for permission after
+     * a restart). Resolves to null if the user cancels or picks something that is not the levels folder.
+     */
+    async getLevelsDir() {
+        if (!this.levelsDir) {
+            try { this.levelsDir = await rememberedHandle('levelsDir'); } catch (e) { this.levelsDir = null; }
+        }
+        if (this.levelsDir) {
+            try {
+                let perm = await this.levelsDir.queryPermission({mode: 'readwrite'});
+                if (perm !== 'granted') perm = await this.levelsDir.requestPermission({mode: 'readwrite'});
+                if (perm === 'granted') return this.levelsDir;
+            } catch (e) { /* the folder moved or was removed: ask again */ }
+            this.levelsDir = null;
+        }
+        return this.askLevelsDir();
+    }
+
+    /** Explains, then opens the folder picker from the dialog's button (the picker needs a click to open). */
+    askLevelsDir() {
+        if (!window.showDirectoryPicker) {
+            this.ui.showDialog('Saving into the levels folder is not available', ['This browser cannot write to a folder. Use Save as… to download the level, then copy it into GameEngine/levels.']);
+            return Promise.resolve(null);
+        }
+        return new Promise(resolve => {
+            this.ui.showDialog('Where are the level files?', [
+                `Save overwrites ${this.fileName}, so the editor needs your GameEngine/levels folder once.`,
+                'Pick that folder in the next window and allow editing files there. The editor remembers it.',
+            ], [{label: 'Cancel', action: () => resolve(null)}, {label: 'Choose folder…', action: async () => {
+                try {
+                    const picked = await window.showDirectoryPicker({id: 'paks-levels', mode: 'readwrite'});
+                    const folder = await findLevelsFolder(picked);
+                    if (!folder) {
+                        this.ui.showDialog('That is not the levels folder', [`"${picked.name}" has no level_00.json in it. Pick GameEngine/levels (or the GameEngine folder).`]);
+                        resolve(null);
+                        return;
+                    }
+                    this.levelsDir = folder;
+                    try { await rememberedHandle('levelsDir', folder); } catch (e) { /* remembered for this session only */ }
+                    resolve(folder);
+                } catch (e) {
+                    if (e.name !== 'AbortError') this.ui.showDialog('Could not use that folder', [String(e.message || e)]);
+                    resolve(null);
+                }
+            }}]);
+        });
+    }
+
+    /** Forget the remembered folder and ask again (top bar: Levels folder…). */
+    async changeLevelsDir() {
+        this.levelsDir = null;
+        try { await rememberedHandle('levelsDir', null); } catch (e) { /* nothing was stored */ }
+        const dir = await this.askLevelsDir();
+        if (dir) this.ui.flash(`Saving floors into ${dir.name}/`);
     }
 
     // ---- draft autosave -------------------------------------------------------------------------------------------------------

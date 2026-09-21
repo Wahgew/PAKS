@@ -87,7 +87,7 @@ class EditorUI {
         this.floorSelect = this.el('select', 'background:#fff;color:#222;border-radius:4px;padding:4px;font:12px Arial');
         for (let n = 0; n <= 16; n++) this.floorSelect.append(this.el('option', '', {value: n, textContent: n === 0 ? 'Floor 0 (test)' : `Floor ${n}`}));
 
-        this.btnSave = this.button('Save', () => e.save(false), 'Save (Ctrl+S). Writes straight to the file where the browser allows it, otherwise downloads it');
+        this.btnSave = this.button('Save', () => e.save(false), '');
         this.btnUndo = this.button('Undo', () => e.undo(), 'Undo (Ctrl+Z)');
         this.btnRedo = this.button('Redo', () => e.redo(), 'Redo (Ctrl+Y)');
         this.gridBox = this.el('input', 'margin:0', {type: 'checkbox', checked: e.showGrid, on: {change: ev => e.setGrid(ev.target.checked)}});
@@ -102,7 +102,8 @@ class EditorUI {
             this.button('New', () => e.newLevel(), 'Start an empty level'),
             this.floorSelect, this.button('Open floor', () => e.openFloor(Number(this.floorSelect.value)), 'Copy a built-in floor into the editor'),
             this.button('Open file…', () => e.openFile(), 'Open a level .json file'),
-            this.btnSave, this.button('Save as…', () => e.save(true), 'Save to a new file'), sep(),
+            this.btnSave, this.button('Save as…', () => e.save(true), 'Always asks for a file to save to'),
+            this.button('Levels folder…', () => e.changeLevelsDir(), 'Choose the GameEngine/levels folder that Save writes built-in floors into'), sep(),
             this.btnUndo, this.btnRedo, sep(),
             this.el('label', 'display:flex;align-items:center;gap:4px', {}, this.gridBox, 'Grid'),
             this.el('label', 'display:flex;align-items:center;gap:4px', {}, 'Snap', this.snapSelect), sep(),
@@ -327,7 +328,18 @@ class EditorUI {
     }
 
     setCursorInfo(text) { this.cursorInfo.textContent = text; }
-    setHint(text) { this.hint.textContent = text; }
+    setHint(text) {
+        this.lastHint = text;
+        if (!this.flashUntil || Date.now() > this.flashUntil) { this.hint.textContent = text; this.hint.style.color = '#999'; }
+    }
+
+    /** A short confirmation in the status bar ("Saved levels/level_05.json") that gives way to the hint again. */
+    flash(text) {
+        this.flashUntil = Date.now() + 4000;
+        this.hint.textContent = text;
+        this.hint.style.color = '#7c7';
+        setTimeout(() => { if (Date.now() >= this.flashUntil) { this.hint.textContent = this.lastHint || ''; this.hint.style.color = '#999'; } }, 4100);
+    }
 
     /** Highlight the active tool, tile and entity type, and enable or disable the buttons that depend on state. */
     syncToolState() {
@@ -341,6 +353,7 @@ class EditorUI {
         for (const [type, b] of this.placeButtons) this.setActive(b, e.tool === 'place' && e.placeType === type);
         this.setEnabled(this.btnUndo, e.history.canUndo);
         this.setEnabled(this.btnRedo, e.history.canRedo);
+        this.btnSave.title = e.saveHint();
         this.name.textContent = `${e.name}${e.dirty ? ' *' : ''}`;
         this.name.style.color = e.dirty ? '#ffcc00' : '#ccc';
     }
