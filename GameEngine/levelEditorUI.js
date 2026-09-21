@@ -106,7 +106,9 @@ class EditorUI {
             this.button('Levels folder…', () => e.changeLevelsDir(), 'Choose the GameEngine/levels folder that Save writes built-in floors into'), sep(),
             this.btnUndo, this.btnRedo, sep(),
             this.el('label', 'display:flex;align-items:center;gap:4px', {}, this.gridBox, 'Grid'),
-            this.el('label', 'display:flex;align-items:center;gap:4px', {}, 'Snap', this.snapSelect), sep(),
+            this.el('label', 'display:flex;align-items:center;gap:4px', {}, 'Snap', this.snapSelect),
+            this.button('Fit', () => e.fitView(), 'Show the whole level (0). The wheel zooms, Space+drag or middle-drag pans'),
+            this.button('100%', () => e.zoom100(), 'Actual size (1)'), sep(),
             this.btnPlay, this.name);
         this.root.append(bar);
         this.bar = bar;

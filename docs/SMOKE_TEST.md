@@ -130,10 +130,16 @@ Run `node --test` from the repo root first (all tests must pass; they cover coll
 
 ---
 
-## 13. Screen Resizing
+## 13. Screen Resizing and Camera
 
-- [ ] Resizing the browser window keeps the canvas centered.
-- [ ] Game is playable at common browser widths (1280px, 1440px, 1920px).
+The game draws a fixed view (76 x 41 tiles) and fits it to the window with one rule, so every floor looks the same size on a given screen.
+
+- [ ] Resizing the browser window keeps the view centered and fitted (no scrollbars, nothing cut off, black around it).
+- [ ] Game is playable at 1280x720, 1920x1080 and 2560x1440. A tile is bigger on the bigger screens, but you see the same amount of level on each.
+- [ ] Every floor (0-16) is shown whole, with black bars above and below the shorter ones. Nothing scrolls, and moving between floors does not change the scale or the size of the timer panel.
+- [ ] Debug on: clicking teleports the player to the exact spot you clicked, at any window size.
+- [ ] Die (or finish a floor) and click the buttons on the death/complete screen: they respond where they are drawn, at any window size.
+- [ ] A large level scrolls: open the level editor, make or import a level bigger than 76x41 tiles (say 200x120), Playtest it and run. The camera follows you smoothly, you stay in the middle of the screen, tiles and the timer stay the same size as on the normal floors, and you can't see past the edge of the level.
 
 ---
 
@@ -186,6 +192,12 @@ Click **LEVEL EDITOR** on the title screen. Serve over HTTP as usual. Use a clea
 - [ ] `Ctrl+Z` / `Ctrl+Y` (or `Ctrl+Shift+Z`): a whole brush or move drag is one step, and so is each inspector edit.
 - [ ] Set the exit's levers needed above the number of levers: the Problems list says the exit can never open, Playtest is disabled, and pressing `P` explains why instead of starting. Clicking a problem selects the thing it is about.
 - [ ] Open **Floor 14**: it opens with no errors or warnings (its big blocks are drawn and solid) and can be played.
+
+**Panning and zooming** (for large levels)
+- [ ] The wheel zooms toward the cursor (the spot under the cursor stays put). `Space` + drag and middle-drag pan. `0` (or the **Fit** button) shows the whole level, `1` (**100%**) is actual size, `+`/`-` zoom in steps, arrow keys pan when nothing is selected. The status bar shows the zoom.
+- [ ] Painting, erasing, placing and dragging still hit the exact cell/spot you point at while zoomed and panned. Space+drag never paints.
+- [ ] Resize a level to 200x120 (the level panel), then to 300x300: it stays responsive, the grid thins out when zoomed far out, and Fit shows all of it.
+- [ ] Playtest a large level: the view switches to the game's own (the camera follows the player), and `Esc` returns to the editor looking at the same spot you left.
 
 **Playtest** (`P` or the Playtest button)
 - [ ] The panels hide and the level fills the window with the floor timer. You spawn at the marker and move, jump, wall jump and slide exactly as in the game.

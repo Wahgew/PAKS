@@ -121,39 +121,24 @@ class AutoScreenResizer {
     }
 
     /**
-     * Apply scaling to the canvas based on screen size
+     * Fit the canvas in the window. The canvas is the game's fixed-size view of the level (see camera.js), so this one
+     * rule gives every level the same scale on a given window, and 1080p, 1440p and a small laptop all show the same
+     * amount of level. It replaces the old 1 / 0.75 / 0.5 steps that were picked from the screen size, not the window.
      */
     applyScaling() {
-        const screenWidth = window.screen.availWidth;
-        const screenHeight = window.screen.availHeight;
-
-        // Define scaling logic based on screen size
-        let scaleFactor = 1;
-
-        // For screens smaller than Full HD (1920x1080)
-        if (screenWidth < 1920 || screenHeight < 1080) {
-            scaleFactor = 0.75; // Reduce to 75% of original size
-        }
-
-        // For very small screens (like laptops or smaller displays)
-        if (screenWidth < 1366 || screenHeight < 768) {
-            scaleFactor = 0.5; // Reduce to 50% of original size
-        }
-
-        // Apply scaling to canvas through the inner wrapper
         const innerWrapper = document.getElementById('game-inner-wrapper');
-        if (innerWrapper) {
-            innerWrapper.style.transform = `scale(${scaleFactor})`;
-            innerWrapper.style.transformOrigin = 'center center';
-        }
+        if (!innerWrapper || !this.canvas.width || !this.canvas.height) return;
 
-        console.log(`Screen Size: ${screenWidth}x${screenHeight}`);
-        console.log(`Applied Scale: ${scaleFactor}`);
+        const scale = Math.min(window.innerWidth / this.canvas.width, window.innerHeight / this.canvas.height);
+        innerWrapper.style.transform = `scale(${scale})`;
+        innerWrapper.style.transformOrigin = 'center center';
     }
 }
 
 // Initialize after DOM load
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('gameWorld');
-    new AutoScreenResizer(canvas);
+    const resizer = new AutoScreenResizer(canvas);
+    // The engine calls this whenever it changes the canvas size
+    window.fitGameCanvas = () => resizer.applyScaling();
 });

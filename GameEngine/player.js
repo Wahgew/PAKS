@@ -1190,9 +1190,8 @@ class Player {
         // Only add new handler if debugging is enabled
         if (this.game.options.debugging) {
             this.teleportHandler = (e) => {
-                const rect = this.game.ctx.canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
+                // The level position under the cursor: through the canvas' CSS scale and the camera
+                const {x: mouseX, y: mouseY} = this.game.pointerToWorld(e);
 
                 // Teleport the player
                 this.x = mouseX - this.width / 2;

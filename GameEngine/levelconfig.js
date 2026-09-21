@@ -69,6 +69,9 @@ class LevelConfig {
         const player = levelConfig.player();
         this.game.addEntity(player);
 
+        // Start the camera on the player rather than easing over from the previous level
+        if (this.game.snapCamera) this.game.snapCamera();
+
         // Reset timer
         if (this.game.timer) {
             this.game.timer.reset();
