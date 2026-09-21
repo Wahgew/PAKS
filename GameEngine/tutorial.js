@@ -11,7 +11,11 @@ const Tutorial = (() => {
     const FILE = 'levels/tutorial.json';
     const STORAGE_KEY = 'paks.tutorialDone';
 
-    // Storage can throw (private windows, blocked site data), so every access is guarded
+    // Storage can throw (private windows, blocked site data), so every access is guarded, including getting hold of
+    // localStorage at all. Everything below accepts null, which is what this returns when there is no usable storage.
+    function storage() {
+        try { return typeof window !== 'undefined' && window.localStorage ? window.localStorage : null; } catch (e) { return null; }
+    }
 
     /** True if the player has finished or skipped the tutorial. False when nothing is stored. */
     function isDone(storage) {
@@ -41,7 +45,7 @@ const Tutorial = (() => {
         return completed.length === 0;
     }
 
-    return {LEVEL_KEY, FILE, STORAGE_KEY, isDone, markDone, clear, shouldAutoStart};
+    return {LEVEL_KEY, FILE, STORAGE_KEY, storage, isDone, markDone, clear, shouldAutoStart};
 })();
 
 if (typeof module !== 'undefined' && module.exports) {

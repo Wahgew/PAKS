@@ -91,6 +91,7 @@ class GameEngine {
 
             // Add level options
             const levels = [
+                { value: Tutorial.LEVEL_KEY, label: "Tutorial" },
                 { value: 0, label: "Floor 0 (Test)" },
                 { value: 1, label: "Floor 1" },
                 { value: 2, label: "Floor 2" },
@@ -157,6 +158,10 @@ class GameEngine {
             });
 
             levelSelect.addEventListener("change", (e) => {
+                if (e.target.value === Tutorial.LEVEL_KEY) {
+                    if (this.levelConfig) this.levelConfig.loadTutorial();
+                    return;
+                }
                 const level = parseInt(e.target.value);
                 console.log("Loading level:", level);
                 if (this.levelConfig) {

@@ -70,3 +70,22 @@ test('the tutorial lives outside the numbered floors', () => {
     assert.equal(Number.isNaN(Number(Tutorial.LEVEL_KEY)), true, 'a numeric key could collide with a floor');
     assert.match(Tutorial.FILE, /^levels\/tutorial\.json$/);
 });
+
+test('storage() gives localStorage, or null when it is missing or refuses to be read', () => {
+    const saved = global.window;
+    try {
+        global.window = {localStorage: memory()};
+        assert.equal(Tutorial.storage(), global.window.localStorage);
+        global.window = {};
+        assert.equal(Tutorial.storage(), null);
+        global.window = {get localStorage() { throw new Error('SecurityError'); }};
+        assert.equal(Tutorial.storage(), null, 'reading localStorage itself can throw');
+        // and null is safe to hand to everything else
+        assert.equal(Tutorial.isDone(null), false);
+        assert.equal(Tutorial.markDone(null), false);
+        assert.equal(Tutorial.clear(null), false);
+        assert.equal(Tutorial.shouldAutoStart(null, null), false, 'no way to remember it, so do not force it on every Start');
+    } finally {
+        if (saved === undefined) delete global.window; else global.window = saved;
+    }
+});

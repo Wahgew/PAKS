@@ -309,6 +309,16 @@ window.resetLevelProgress = async function() {
     if (window.LEVEL_PROGRESS) {
         try {
             await window.LEVEL_PROGRESS.resetProgress();
+
+            // Reset means everything the game remembers about the player: best times and the tutorial too, so the
+            // next Start begins with the tutorial again. (Volume is a setting, not progress, and stays.)
+            try {
+                const times = (window.LAST_ENGINE && window.LAST_ENGINE.levelTimesManager) || new LevelTimesManager();
+                await times.resetAllTimes();
+            } catch (error) {
+                console.error("Error resetting best times:", error);
+            }
+            Tutorial.clear(Tutorial.storage());
             
             // Reset global level tracking
             window.CURRENT_GAME_LEVEL = 1;

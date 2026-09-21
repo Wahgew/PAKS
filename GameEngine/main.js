@@ -1,5 +1,6 @@
 let ASSET_MANAGER;
-// options.editor starts the level editor (levelEditor.js) on a fresh engine instead of the game
+// options.editor starts the level editor (levelEditor.js) on a fresh engine instead of the game;
+// options.tutorial starts the game on the tutorial level instead of a floor
 function startGame(options = {}) {
     console.log(options.editor ? "Level editor starting..." : "Game Starting...");
     const gameEngine = new GameEngine();
@@ -58,6 +59,13 @@ function startGame(options = {}) {
                     .catch(err => console.error('Failed to load', url, err))
             );
         }
+        // The tutorial is not a numbered floor: it is stored under its own key and only ever asked for by name
+        levelFetches.push(
+            fetch(`./${Tutorial.FILE}`)
+                .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status} for ${Tutorial.FILE}`))
+                .then(data => window.LEVEL_LOADER.store(Tutorial.LEVEL_KEY, data))
+                .catch(err => console.error('Failed to load', Tutorial.FILE, err))
+        );
         await Promise.all(levelFetches);
 
         const canvas = document.getElementById("gameWorld");
@@ -83,7 +91,10 @@ function startGame(options = {}) {
 
         // Check if a specific level was requested from LevelsScreen
         // I replaced the hardcoded set to level 1
-        if (window.targetLevelToLoad !== undefined) {
+        if (options.tutorial) {
+            // Falls back to floor 1 if the tutorial file didn't load, so Start never leaves an empty canvas
+            if (!gameEngine.levelConfig.loadTutorial()) gameEngine.levelConfig.loadLevel(1);
+        } else if (window.targetLevelToLoad !== undefined) {
             // Load the level that was requested from LevelsScreen
             gameEngine.levelConfig.currentLevel = window.targetLevelToLoad;
             gameEngine.levelConfig.loadLevel(window.targetLevelToLoad);
