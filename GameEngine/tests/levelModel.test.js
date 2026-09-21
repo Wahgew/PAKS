@@ -5,25 +5,28 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const LevelModel = require('../levelModel.js');
 const TileShapes = require('../tileShapes.js');
-const {loadBrowserScripts, loadLevel} = require('./helpers/browserScripts.js');
+const {loadBrowserScripts, loadLevel, loadLevelFile} = require('./helpers/browserScripts.js');
 
 const M = LevelModel;
 const LEVELS = Array.from({length: 17}, (_, n) => n);
+// the 17 numbered floors plus the tutorial, which is a level file of its own
+const REAL = [...LEVELS, 'tutorial'];
+const levelOf = n => n === 'tutorial' ? loadLevelFile('tutorial') : loadLevel(n);
 const plain = v => JSON.parse(JSON.stringify(v));   // strip the vm realm's prototypes before deepEqual
 
 test('every real level validates with no errors and no warnings', () => {
     // Level 14 once had two BigBlocks with reversed corners (y2 < y): drawn, but never solid. They were fixed by hand,
     // and a warning here (or a spawn inside a block, or anything outside the map) means a level has gone wrong again.
-    for (const n of LEVELS) {
-        const {errors, warnings} = M.validate(loadLevel(n));
+    for (const n of REAL) {
+        const {errors, warnings} = M.validate(levelOf(n));
         assert.deepEqual(errors, [], `level ${n} errors`);
         assert.deepEqual(warnings, [], `level ${n} warnings`);
     }
 });
 
 test('no real level spawns the player inside a tile or block (they stand on top of it instead)', () => {
-    for (const n of LEVELS) {
-        const spawn = M.validate(loadLevel(n)).warnings.filter(w => w.path === 'player');
+    for (const n of REAL) {
+        const spawn = M.validate(levelOf(n)).warnings.filter(w => w.path === 'player');
         assert.deepEqual(spawn, [], `level ${n}: ${spawn.map(w => w.message).join()}`);
     }
 });
@@ -54,8 +57,8 @@ test('a spawn inside a block, a big block or a slope is flagged; standing on top
 });
 
 test('serialize then parse gives back exactly the same level, for every real level', () => {
-    for (const n of LEVELS) {
-        const level = loadLevel(n);
+    for (const n of REAL) {
+        const level = levelOf(n);
         const text = M.serialize(level);
         assert.deepEqual(JSON.parse(text), level, `level ${n} changed in a round trip`);
         assert.equal(M.serialize(JSON.parse(text)), text, `level ${n} is not stable under a second round trip`);
@@ -105,8 +108,8 @@ test('entity boxes match the real entity classes on every entity in every level'
         for (const k of ['x', 'y', 'w', 'h']) assert.ok(Math.abs(expected[k] - actual[k]) < 1e-9, `${label}: ${k} model ${expected[k]} vs class ${actual[k]}`);
         checked++;
     };
-    for (const n of LEVELS) {
-        const level = loadLevel(n);
+    for (const n of REAL) {
+        const level = levelOf(n);
         const instance = new loader();
         instance.store(n, level);
         const parts = instance.getLevelEntities(n, game, 25);
@@ -119,8 +122,7 @@ test('entity boxes match the real entity classes on every entity in every level'
         compare(`level ${n} player`, M.boundsFor('Player', level.player), boxOf(parts.player()));
     }
     assert.ok(checked > 200);
-    // Hint signs only appear in the tutorial, whose box is checked in hint.test.js
-    for (const type of M.ENTITY_TYPE_NAMES.filter(t => t !== 'Hint')) assert.ok(seenTypes.has(type), `no real level has a ${type}, so its size is unchecked`);
+    for (const type of M.ENTITY_TYPE_NAMES) assert.ok(seenTypes.has(type), `no real level has a ${type}, so its size is unchecked`);
 });
 
 test('a new entity of every type validates and loads through the real LevelLoader', () => {
