@@ -26,12 +26,6 @@ class ProjectileLauncher {
         this.time = this.atkspd; // shoot projectile immediately
         this.reverse = false;
 
-        // Load spritesheet
-        this.spritesheet = ASSET_MANAGER.getAsset("./sprites/launcher_small.png");
-
-        // Create animator with full sprite dimensions
-        this.animator = new Animator(this.spritesheet, 0, 0, this.width, this.height, 1, 0.1);
-
         this.velocity = {x: 0, y: 0};
     }
 
@@ -54,21 +48,9 @@ class ProjectileLauncher {
             ctx.strokeRect(this.x, this.y, this.width, this.height);
         }
 
-        // Draw the sprite
-        switch (this.shotdirec) {
-            case 'UP':
-                this.animator.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1, 90);
-                break;
-            case 'DOWN':
-                this.animator.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1, 270);
-                break;
-            case 'RIGHT':
-                this.animator.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1, 180);
-                break;
-            case 'LEFT':
-                this.animator.drawFrame(this.game.clockTick, ctx, this.x, this.y);
-                break;
-        }
+        // Vector drawing (entityArt.js), turned to face shotdirec; this.time is the time since the last shot,
+        // which drives the recoil, the muzzle flash and the charge light
+        EntityArt.launcher(ctx, this);
     }
 }
 
@@ -80,11 +62,6 @@ class Projectile {
         this.width = 30;
         this.spin = 0;
 
-        // Load spritesheet
-        this.spritesheet = ASSET_MANAGER.getAsset("./sprites/proj_small.png");
-
-        // Create animator with full sprite dimensions
-        this.animator = new Animator(this.spritesheet, 0, 0, this.width, this.height, 1, 0.1);
         this.velocity = {x: 0, y: 0};
         this.updateBB();
     }
@@ -149,7 +126,7 @@ class Projectile {
             ctx.strokeRect(this.x, this.y, this.width, this.height);
         }
 
-        this.animator.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1, this.spin);
+        EntityArt.projectile(ctx, this);
     }
 }
 
@@ -179,12 +156,6 @@ class Spike {
         this.time = 0;
         this.reverse = false;
         this.spin = 0;
-
-        // Load spritesheet
-        this.spritesheet = ASSET_MANAGER.getAsset("./sprites/spike_small.png");
-
-        // Create animator with full sprite dimensions
-        this.animator = new Animator(this.spritesheet, 0, 0, this.width, this.height, 1, 0.1);
 
         this.velocity = {x: 0, y: 0};
         this.updateBB();
@@ -299,8 +270,7 @@ class Spike {
             ctx.strokeRect(this.x, this.y, this.width, this.height);
         }
 
-        // Draw the sprite
-        this.animator.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1, this.spin);
+        EntityArt.spike(ctx, this);
     }
 }
 

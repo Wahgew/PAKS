@@ -7,7 +7,7 @@ const {loadBrowserScripts} = require('./helpers/browserScripts.js');
 
 const win = {};
 const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js', 'deathParticle.js', 'deathAnimate.js',
-    'bigblock.js', 'enemies.js', 'stickman.js', 'player.js', 'levelconfig.js', 'levelLoader.js', 'levelModel.js', 'levelEditor.js'], {
+    'bigblock.js', 'enemies.js', 'stickman.js', 'entityArt.js', 'player.js', 'levelconfig.js', 'levelLoader.js', 'levelModel.js', 'levelEditor.js'], {
     window: win,
     console: {log() {}, warn: console.warn, error: console.error},
     setTimeout: fn => fn(),                      // Player.kill() shows the death screen from a timer; run it at once

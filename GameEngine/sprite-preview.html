@@ -83,9 +83,9 @@
             <h2>Every state</h2>
             <canvas id="grid" height="190"></canvas>
         </section>
-        <section id="entitySection" hidden>
+        <section id="entitySection">
             <h2>Entities</h2>
-            <canvas id="entities" height="200"></canvas>
+            <canvas id="entities" height="240"></canvas>
         </section>
     </div>
 </main>
@@ -93,6 +93,7 @@
 <script src="./stickman.js"></script>
 <script src="./deathParticle.js"></script>
 <script src="./deathAnimate.js"></script>
+<script src="./entityArt.js"></script>
 <script>
     const $ = id => document.getElementById(id);
     const STATES = ['idle', 'walk', 'run', 'skid', 'jump', 'fall', 'slide', 'crouch', 'wall'];
@@ -185,7 +186,8 @@
         ctx.fillStyle = bg;
         ctx.fillRect(0, 0, w, h);
         ctx.save();
-        const groundY = h - 50;
+        // In a jump the view rises with the figure, so the whole arc stays in frame at any zoom
+        const groundY = h - 50 + Math.max(0, main.height * zoom - (h - 50 - 90 * zoom));
         ctx.translate(w / 2, groundY);
         ctx.scale(zoom, zoom);
         drawGround(ctx, -w / 2 / zoom, w / 2 / zoom, 0, main.x, bg);
@@ -243,8 +245,44 @@
         });
     }
 
-    // Hooks for the entity row (entityArt.js adds it)
-    const extraRows = [];
+    // Every entity in entityArt.js, animating as it does in the game
+    const ent = {t: 0, spin: 0, lever: 0, leverOn: false, door: 0};
+    function drawEntities(dt) {
+        const {ctx, w, h} = fit($('entities'));
+        const bg = $('bg').value, zoom = Math.min(2, Number($('zoom').value));
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, w, h);
+        ent.t += dt;
+        ent.spin = (ent.spin + 360 * dt) % 720;
+        // The lever is pulled every 2.4 s and reset; the door unlocks (and opens) for half of every 4 s
+        const leverPhase = ent.t % 2.4;
+        ent.lever = leverPhase < 1.2 ? 0 : Math.min(1, (leverPhase - 1.2) / 0.2);
+        const doorOpen = ent.t % 4 > 2;
+        ent.door = doorOpen ? Math.min(1, ent.door + dt / 0.6) : 0;
+        const cells = [
+            ['spike', 40, c => EntityArt.spike(c, {x: 0, y: 0, width: 40, height: 40, spin: ent.spin})],
+            ['spike (moving)', 40, c => EntityArt.spike(c, {x: Math.sin(ent.t * 2) * 12, y: 0, width: 40, height: 40, spin: ent.spin})],
+            ['projectile', 30, c => EntityArt.projectile(c, {x: ((ent.t * 60) % 60) - 30, y: 0, width: 30, height: 30, spin: ent.spin, direction: 'RIGHT'})],
+            ...['LEFT', 'UP', 'RIGHT', 'DOWN'].map((d, i) => ['launcher ' + d.toLowerCase(), 54,
+                c => EntityArt.launcher(c, {x: 0, y: 0, width: 58, height: 54, shotdirec: d, time: (ent.t + i * 0.3) % 1.5, atkspd: 1.5})]),
+            ['lever', 53, c => EntityArt.lever(c, {x: 0, y: 0, width: 23, height: 53, isFlipped: false}, ent.lever)],
+            ['exit door', 81.5, c => EntityArt.exitDoor(c, {x: 0, y: 0, width: 276, height: 326, scale: 0.25}, !doorOpen, ent.door)],
+        ];
+        const cell = w / cells.length;
+        cells.forEach(([label, size, draw], i) => {
+            ctx.save();
+            ctx.translate(cell * (i + 0.5) - 30 * zoom, (h - 30) / 2 - size * zoom / 2);
+            ctx.scale(zoom, zoom);
+            draw(ctx);
+            ctx.restore();
+            ctx.fillStyle = parseInt(bg.slice(1, 3), 16) < 128 ? '#e8e8ea' : '#333';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, cell * (i + 0.5), h - 10);
+            ctx.textAlign = 'left';
+        });
+    }
+    const extraRows = [drawEntities];
 
     let last = performance.now();
     function frame(now) {
