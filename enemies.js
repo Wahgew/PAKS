@@ -196,8 +196,11 @@ class Spike {
 
     update() {
         var that = this;
+        // Position before this frame's movement, restored if we run into a BigBlock below
+        const prevX = this.x;
+        const prevY = this.y;
         if (this.moving && this.tracking) {
-            this.game.entities.forEach(function (entity) { 
+            this.game.entities.forEach(function (entity) {
                 if (entity instanceof Player) {
                     if (entity.x + entity.width / 2 > that.x + that.width / 2) {
                         that.velocity.x = that.speed;

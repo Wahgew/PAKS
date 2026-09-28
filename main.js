@@ -1,7 +1,13 @@
 let ASSET_MANAGER;
-function startGame() {
-    console.log("Game Starting...");
+// options.editor starts the level editor (levelEditor.js) on a fresh engine instead of the game;
+// options.tutorial starts the game on the tutorial level instead of a floor
+function startGame(options = {}) {
+    console.log(options.editor ? "Level editor starting..." : "Game Starting...");
     const gameEngine = new GameEngine();
+    // Every Start builds a new engine on the same canvas and old loops are not always stopped, so stop the last
+    // one before the editor takes over the canvas.
+    if (options.editor && window.LAST_ENGINE) window.LAST_ENGINE.running = false;
+    window.LAST_ENGINE = gameEngine;
     ASSET_MANAGER = new AssetManager(); // Declared globally, accessible everywhere if I set it to const the map not gonna load when pressing start
 
     // "block/tiles"
@@ -41,11 +47,41 @@ function startGame() {
     ASSET_MANAGER.queueDownload("./sprites/elevator_right.png");
 
     ASSET_MANAGER.downloadAll(async () => {
+        // Preload all level JSON files so LEVEL_LOADER is populated before the
+        // game starts. Levels 0–16; failures are logged but don't crash startup.
+        const levelFetches = [];
+        for (let n = 0; n <= 16; n++) {
+            const url = `./levels/level_${String(n).padStart(2, '0')}.json`;
+            levelFetches.push(
+                fetch(url)
+                    .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status} for ${url}`))
+                    .then(data => window.LEVEL_LOADER.store(n, data))
+                    .catch(err => console.error('Failed to load', url, err))
+            );
+        }
+        // The tutorial is not a numbered floor: it is stored under its own key and only ever asked for by name
+        levelFetches.push(
+            fetch(`./${Tutorial.FILE}`)
+                .then(r => r.ok ? r.json() : Promise.reject(`HTTP ${r.status} for ${Tutorial.FILE}`))
+                .then(data => window.LEVEL_LOADER.store(Tutorial.LEVEL_KEY, data))
+                .catch(err => console.error('Failed to load', Tutorial.FILE, err))
+        );
+        await Promise.all(levelFetches);
+
         const canvas = document.getElementById("gameWorld");
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false; // uncomment this if we're using pixel art
 
         await gameEngine.init(ctx);
+
+        if (options.editor) {
+            // No gameEngine.levelConfig: the debug floor picker would load a floor over the level being edited
+            window.LEVEL_EDITOR = new LevelEditor(gameEngine);
+            window.LEVEL_EDITOR.open();
+            gameEngine.start();
+            return;
+        }
+
         gameEngine.levelConfig = new LevelConfig(gameEngine);
         
         if (!window.GAME_MENU) {
@@ -55,7 +91,10 @@ function startGame() {
 
         // Check if a specific level was requested from LevelsScreen
         // I replaced the hardcoded set to level 1
-        if (window.targetLevelToLoad !== undefined) {
+        if (options.tutorial) {
+            // Falls back to floor 1 if the tutorial file didn't load, so Start never leaves an empty canvas
+            if (!gameEngine.levelConfig.loadTutorial()) gameEngine.levelConfig.loadLevel(1);
+        } else if (window.targetLevelToLoad !== undefined) {
             // Load the level that was requested from LevelsScreen
             gameEngine.levelConfig.currentLevel = window.targetLevelToLoad;
             gameEngine.levelConfig.loadLevel(window.targetLevelToLoad);
@@ -75,6 +114,10 @@ function startGame() {
         // gameEngine.levelTimesManager.resetBestTime(0, 3000)
         // gameEngine.levelTimesManager.debugPrintAllTimes();
     });
+}
+
+function startEditor() {
+    startGame({editor: true});
 }
 
 function showLevels() {
@@ -159,11 +202,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     createVolumeToggleButton();
 
-    // Add keyboard shortcut for volume panel (M key)
-    // Add keyboard shortcut for volume panel (M key)
+    // Keyboard shortcut for the volume panel. It is V, not M: LevelUI already uses M for "go to the main menu"
+    // on the complete/death screens, and both used to fire at once.
     document.addEventListener('keydown', (e) => {
-        if (e.key.toLowerCase() === 'm') {
-            console.log("M key pressed");
+        if (e.key.toLowerCase() === 'v') {
+            console.log("V key pressed");
             if (window.VOLUME_CONTROL) {
                 console.log("Toggling volume control via keyboard");
                 window.VOLUME_CONTROL.toggle();
