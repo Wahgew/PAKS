@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const {loadBrowserScripts, loadFixture} = require('./helpers/browserScripts.js');
 
 class Stub {}
-const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'player.js'], {
+const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'stickman.js', 'player.js'], {
     window: {},
     setTimeout: (fn, ms) => setTimeout(fn, ms).unref(),   // wall-jump cooldown uses real timers
     ASSET_MANAGER: {getAsset: () => ({})},

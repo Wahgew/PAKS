@@ -19,16 +19,7 @@ function startGame(options = {}) {
     ASSET_MANAGER.queueDownload("./sprites/block6_amber.png")
     ASSET_MANAGER.queueDownload("./sprites/block7_ocean.png")
     ASSET_MANAGER.queueDownload("./sprites/block8_burgundy.png")
-    // player assets
-    ASSET_MANAGER.queueDownload("./sprites/idle.png");
-    ASSET_MANAGER.queueDownload("./sprites/walk.png");
-    ASSET_MANAGER.queueDownload("./sprites/run.png");
-    ASSET_MANAGER.queueDownload("./sprites/jump.png");
-    ASSET_MANAGER.queueDownload("./sprites/skid.png");
-    ASSET_MANAGER.queueDownload("./sprites/slide.png");
-    ASSET_MANAGER.queueDownload("./sprites/wall-slide.png");
-    ASSET_MANAGER.queueDownload("./sprites/crouch.png");
-    ASSET_MANAGER.queueDownload("./sprites/fall.png");
+    // The player is drawn as a vector rig (stickman.js), so it needs no images
     ASSET_MANAGER.queueDownload("./sprites/menu.png");
 
     // hazard assets
