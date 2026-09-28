@@ -18,6 +18,7 @@ You play a stickman trying to reach the top of a building, one elevator floor at
 
 - **Momentum-based movement:** acceleration and deceleration instead of instant speed changes, with walk, sprint, skid, crouch and slide
 - **Wall sliding and wall jumping**
+- **Vector stickman:** the player is a jointed vector figure posed every frame. Walk and run cycles follow your real speed, so planted feet never slide; every move blends smoothly into the next, hard landings squash, and a soft shadow sits under your feet. Spikes, launchers, projectiles, levers and the exit door are vector drawings too, with small animations (a launcher's light warms up before it fires, a pulled lever swings, the exit doors slide open). Dying throws the stickman's own limbs
 - **Slopes and curves:** 45° and gentle 26.6° ramps, steep 63.4° faces, and quarter-circle shoulders and quarter-pipes that you run, slide and jump along at full speed
 - **Variable jump height** (release jump early for a shorter hop) and jump buffering
 - **Hazards:** static, moving and tracking spikes, projectile launchers, and glowing lasers
@@ -65,7 +66,7 @@ Collision and movement logic have automated tests that need only Node 20+ (no in
 node --test        # from the repo root
 ```
 
-They cover the slope/curve geometry, a regression check that full-block collision is unchanged on every level, headless runs of the real player over slopes, the level editor's model (every real level validates and round-trips, and a level authored with the model can be won and lost), and the tutorial (a scripted run of the real player wins it, and each lesson is shown to be required). UI, audio and saved progress are still checked by hand with [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md).
+They cover the slope/curve geometry, a regression check that full-block collision is unchanged on every level, headless runs of the real player over slopes, the level editor's model (every real level validates and round-trips, and a level authored with the model can be won and lost), the tutorial (a scripted run of the real player wins it, and each lesson is shown to be required), and the vector stickman and entities (planted feet never slide, no pose snaps, every drawing stays in its footprint). UI, audio and saved progress are still checked by hand with [docs/SMOKE_TEST.md](docs/SMOKE_TEST.md).
 
 ---
 
@@ -84,15 +85,18 @@ GameEngine/
 ├── levelModel.js        # Level editor logic: field schema, validation, tile/entity edits, undo, file format (no game dependencies)
 ├── levelEditor.js, levelEditorUI.js   # The in-browser level editor and its panels
 ├── levels/              # level_00.json … level_16.json — one JSON file per floor — plus tutorial.json
-├── player.js            # Player physics, states, animation
+├── player.js            # Player physics and states; draws the stickman rig
+├── stickman.js          # The vector stickman: skeleton, IK, pose clips, crossfades, drawing (no game dependencies)
+├── entityArt.js         # Vector drawings of spikes, launchers, projectiles, levers and the exit door
+├── sprite-preview.html  # Open /sprite-preview.html to watch every stickman state and entity animate
 ├── platform.js, lever.js, bigblock.js, enemies.js   # Level entities and hazards
 ├── hint.js              # Hint sign entity: text drawn in the level (the tutorial is made of these)
 ├── tutorial.js          # Tutorial rules: the "done" flag and when the first Start opens it (no game dependencies)
 ├── LevelUI.js, LevelsScreen.js, gameMenu.js, welcomeScreen.js   # UI screens
 ├── levelProgressManager.js, leveltimesmanager.js    # Saved progress and best times
 ├── audiomanager.js, volumnecontrolui.js             # Music and volume
-├── tests/               # node --test suites (geometry, collision regression, headless player physics, level model and editor, tutorial)
-├── sprites/             # Sprite sheets and UI images
+├── tests/               # node --test suites (geometry, collision regression, headless player physics, level model and editor, tutorial, stickman and entity art)
+├── sprites/             # Tile, platform and UI images (the old player and entity sprites are kept but no longer used)
 └── sounds/              # Music and sound effects
 ```
 
@@ -117,8 +121,8 @@ Created as the team project for TCSS 491. The original project plan aimed for a 
 
 The course is over, but the project isn't. Planned next steps:
 
-- [ ] Redesign the stickman as clean, scalable SVG-based animation frames
-- [ ] Remake all entities/sprites into clean, uniform, scalable SVGs
+- [x] Redesign the stickman as a scalable vector rig with smooth, speed-driven animation (see `sprite-preview.html`)
+- [ ] Remake all entities/sprites as clean, scalable vector art: spikes, launchers, projectiles, levers, the exit door and the death effect are done; menus, blocks and platforms next, rendered at your screen's full resolution
 - [x] Sloped and curved level geometry — 45° and 26.6°/63.4° slopes and quarter circles with SAT collision (arbitrary polygons to come)
 - [x] In-browser level editor with save/load (custom levels are not yet playable from the Levels screen)
 - [x] Data-driven levels (JSON) — all 17 levels loaded from `GameEngine/levels/` at runtime

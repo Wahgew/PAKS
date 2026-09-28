@@ -241,7 +241,29 @@ Use a clean profile for the first-run checks (or press Reset Progress on the Lev
 **Reset**
 - [ ] Complete floor 1 so it has a best time, then Levels → **Reset Progress**: only floor 1 is unlocked, the best time is gone, and the next **Start** opens the tutorial again.
 
-## 17. Known Issues to Watch
+## 17. Vector Stickman and Entities
+
+**Stickman** (any floor; the tutorial and level 0 cover everything)
+- [ ] Idle: the figure stands still and breathes slightly. It fills its box (Debug on): head at the top, feet on the floor.
+- [ ] Walk and run: the foot on the ground stays planted against the floor while the body moves over it (no sliding), at any speed. Speeding up blends the walk into a run with no jump in the legs; holding or releasing Shift doesn't snap the pose.
+- [ ] Jump, fall and land: arms reach up on take-off, the figure tucks at the top and flails a little when falling fast; a high landing squashes it for a moment.
+- [ ] Skid (reverse direction while walking, without Shift): leans back with the front foot braced.
+- [ ] Crouch (`S` standing): squats with hands on knees. Slide (`S` while moving): leans back on a trailing hand, front leg out.
+- [ ] Wall slide: back to the wall, a hand and a foot on it, the other knee up. Turning to face the other way squeezes the figure through the middle rather than flipping in one frame.
+- [ ] No pose ever snaps from one frame to the next when changing state.
+- [ ] A soft shadow sits under the feet, shrinks and fades as you jump, and is gone high in the air or over a platform.
+- [ ] Level 0 slopes and curves: feet stay on the surface.
+- [ ] Dying: the stickman's limbs, torso and head fly apart from the pose it died in, spin, fall and fade behind the death screen; the red splatter looks as before.
+
+**Entities**
+- [ ] Spikes and projectiles are red saws that spin; projectiles leave a short trail.
+- [ ] Launchers face their firing direction; the light on the back warms up before each shot, and the launcher kicks back with a muzzle flash as it fires.
+- [ ] Levers: touching one swings the handle down and turns the knob from red to green. Mirrored levers (direction LEFT) are drawn mirrored.
+- [ ] Exit door: red crosses while it needs levers; once open, the indicator turns green and the doors slide apart onto a lit lift car. A floor with no levers opens its door as it loads.
+- [ ] Level editor: entities look the same as in the game and don't animate.
+- [ ] `/sprite-preview.html` loads with no console errors; every control works (state, speed, playback, zoom, background, joints, shadow, Turn around, Pause, Die) and the entity row animates.
+
+## 18. Known Issues to Watch
 
 
 - **Esc and the tutorial:** `Esc` opens the in-game menu, so the tutorial is skipped with its on-screen button, not `Esc`.
@@ -252,5 +274,6 @@ Use a clean profile for the first-run checks (or press Reset Progress on the Lev
 - **Editor and the title screen:** exiting the editor returns to the title screen; the level being edited is not kept (save it first, or restore it from the draft).
 - **Level 14 duplicate levers:** Two lever objects are placed at identical coordinates. Confirm the exit door opens after collecting the correct number of unique levers.
 - **Corner clipping (pre-existing):** a diagonal jump or fall into the corner of a full block can nick the corner by a few pixels for a frame before it resolves. Not a slope bug; the original game does it too.
-- **Slope feet:** the hitbox rests on its higher corner on a slope, so with Debug on the box hovers above the surface while the sprite's feet touch it. Expected.
+- **Slope feet:** the hitbox rests on its higher corner on a slope, so with Debug on the box hovers above the surface while the stickman's feet touch it. Expected. The legs don't bend to the slope angle.
+- **Stickman sharpness:** on a 1440p or 4K window the canvas is still stretched by CSS, so lines are a little soft; part 2 renders at full resolution.
 - **JSON level loading:** Open the browser console on load and verify no `Failed to load levels/level_XX.json` errors appear. If they do, the game is likely being served from `file://` instead of HTTP.
