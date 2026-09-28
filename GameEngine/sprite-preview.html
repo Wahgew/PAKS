@@ -253,7 +253,7 @@
         const dt = paused ? 0 : real * Number($('slow').value);
         stepMain(dt);
         if (main.death) {
-            main.death.update(dt);
+            main.death.update(0, dt);   // as in the game: its clock is stopped while dead, the pieces run on real time
             main.deathT = (main.deathT || 0) + dt;
             if (main.deathT > 1.2) { main.death = null; main.deathT = 0; }
         }

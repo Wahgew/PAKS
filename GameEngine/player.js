@@ -1048,11 +1048,14 @@ class Player {
                     });
                 }
 
-                // Create death animation at player's center position
+                // Create death animation at player's center position; the stickman comes apart from the pose it
+                // was last drawn in (the rig only moves when drawn, so this is exactly what was on screen)
                 this.deathAnimation = new DeathAnimation(
                     this.x + this.width / 2,
-                    this.y + this.height / 2
+                    this.y + this.height / 2,
+                    Stickman.segments(this.rig.joints(this.x + this.width / 2, this.y + this.height + this.footDrop()))
                 );
+                this.deathDrawnAt = null;
 
                 // Stop the timer
                 if (this.game.timer) {
@@ -1188,7 +1191,11 @@ class Player {
         if (this.dead) {
             // Draw death animation if it exists
             if (this.deathAnimation) {
-                this.deathAnimation.update(this.game.clockTick);
+                // The game clock is stopped while dead, so the flying pieces are timed with the real clock
+                const now = Date.now();
+                const real = this.deathDrawnAt ? Math.min(0.05, (now - this.deathDrawnAt) / 1000) : 0;
+                this.deathDrawnAt = now;
+                this.deathAnimation.update(this.game.clockTick, real);
                 this.deathAnimation.draw(ctx);
             }
             return;
