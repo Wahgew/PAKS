@@ -114,16 +114,53 @@ class drawMap {
         update() {
         }
 
+        /** The level's size in pixels. The canvas is a fixed-size view of it (see camera.js), not this size. */
+        get pixelWidth() {
+                return this.map && this.map[0] ? this.map[0].length * this.drawSize : 0;
+        }
+
+        get pixelHeight() {
+                return this.map ? this.map.length * this.drawSize : 0;
+        }
+
         loadMap (tiles) {
                 if (!Array.isArray(tiles)) {
                         console.error('drawMap.loadMap: expected a 2D tile array');
                         return;
                 }
-                this.map = tiles.map(row => [...row]);
+                // Ids come straight from level JSON; anything the engine doesn't know becomes empty so a typo
+                // can't put an invisible, half-working tile in the level.
+                const unknown = new Set();
+                this.map = tiles.map(row => row.map(id => {
+                        if (TileShapes.isKnown(id)) return id;
+                        unknown.add(id);
+                        return 0;
+                }));
+                if (unknown.size > 0) {
+                        console.warn('drawMap.loadMap: unknown tile ids treated as empty:', [...unknown].join(', '));
+                }
+                // Lets collision skip all shape work on the (currently all) levels that only use 0 and 1.
+                this.hasShapes = this.map.some(row => row.some(id => TileShapes.isShape(id)));
         }
 
-        //checkCollisions method
+        /**
+         * Any tile hit: full blocks first, then sloped/curved shapes (exact SAT against entity.BB).
+         * Shape hits also report the shape id and push-out normal/depth.
+         */
         checkCollisions(entity) {
+                const solid = this.checkSolidTiles(entity);
+                if (solid.collides || !this.hasShapes) return solid;
+
+                const hit = TileShapes.overlapsAny(this.map, this.drawSize, entity.BB);
+                if (!hit) return { collides: false };
+                return { collides: true, tileX: hit.tileX, tileY: hit.tileY, shape: hit.id };
+        }
+
+        /**
+         * Full square blocks only (tile id 1). This is the original collision test, kept as is because the
+         * player resolves full blocks by snapping to tile edges and shapes by a different route.
+         */
+        checkSolidTiles(entity) {
                 if (!entity || !entity.BB) {
                         console.error("Invalid entity passed to checkCollisions");
                         return { collides: false };
@@ -172,13 +209,22 @@ class drawMap {
                 return { collides: false };
         }
 
+        /** Shape contacts for a box (see TileShapes.contacts); empty when the level has no shapes. */
+        getShapeContacts(box) {
+                return this.hasShapes ? TileShapes.contacts(this.map, this.drawSize, box) : [];
+        }
+
+        /** How far a box could drop before landing on a full block or a shape (see TileShapes.dropDistance). */
+        getDropDistance(box, maxDrop) {
+                return TileShapes.dropDistance(this.map, this.drawSize, box, maxDrop);
+        }
+
         draw(ctx) {
                 if (!ctx || !ctx.drawImage) {
                         console.error("Invalid context passed to drawMap.draw:", ctx);
                         return;
                 }
 
-                this.#setCanvasSize(ctx.canvas);
                 this.#clearCanvas(ctx);
                 this.#drawMap(ctx);
         }
@@ -189,9 +235,15 @@ class drawMap {
                         return;
                 }
 
-                // Only draw the tiles that are visible
-                for (let i = 0; i < this.map.length; i++) {
-                        for (let j = 0; j < this.map[i].length; j++) {
+                // Only draw the tiles that are visible: a level can be far bigger than the view
+                const view = this.game && this.game.camera ? this.game.camera.visibleRect() : null;
+                const size = this.drawSize;
+                const rowFrom = view ? Math.max(0, Math.floor(view.top / size)) : 0;
+                const rowTo = view ? Math.min(this.map.length - 1, Math.floor(view.bottom / size)) : this.map.length - 1;
+                for (let i = rowFrom; i <= rowTo; i++) {
+                        const colFrom = view ? Math.max(0, Math.floor(view.left / size)) : 0;
+                        const colTo = view ? Math.min(this.map[i].length - 1, Math.floor(view.right / size)) : this.map[i].length - 1;
+                        for (let j = colFrom; j <= colTo; j++) {
                                 if (this.map[i][j] === 1) {  // If it's a solid tile
                                         const x = j * this.drawSize;
                                         const y = i * this.drawSize;
@@ -213,26 +265,53 @@ class drawMap {
                                         } catch (e) {
                                                 console.error("Error drawing tile at", x, y, e);
                                         }
+                                } else if (this.map[i][j] !== 0) {
+                                        this.#drawShape(ctx, this.map[i][j], j * this.drawSize, i * this.drawSize);
                                 }
                         }
                 }
         }
 
+        // Sloped/curved tile: the same block sprite, clipped to the shape's outline so it matches the theme.
+        #drawShape(ctx, id, x, y) {
+                const shape = TileShapes.get(id, this.drawSize);
+                if (!shape) return;
+
+                ctx.save();
+                ctx.beginPath();
+                shape.outline.forEach((p, k) => k === 0 ? ctx.moveTo(x + p.x, y + p.y) : ctx.lineTo(x + p.x, y + p.y));
+                ctx.closePath();
+                ctx.clip();
+                ctx.drawImage(this.blocks[this.random2], x, y, this.drawSize, this.drawSize);
+                ctx.restore();
+
+                if (this.game.options.debugging) {
+                        // Outline plus the convex pieces collision actually uses
+                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                        ctx.stroke(this.#shapePath(shape.outline, x, y));
+                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)';
+                        shape.pieces.forEach(piece => ctx.stroke(this.#shapePath(piece.pts, x, y)));
+                }
+        }
+
+        #shapePath(pts, x, y) {
+                const path = new Path2D();
+                pts.forEach((p, k) => k === 0 ? path.moveTo(x + p.x, y + p.y) : path.lineTo(x + p.x, y + p.y));
+                path.closePath();
+                return path;
+        }
+
         #clearCanvas(ctx) {
                 if (!ctx) return;
                 try {
+                        // Just the level's own area: outside it the engine leaves the canvas black
                         ctx.fillStyle = this.colors[this.random] 
-                        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                        ctx.fillRect(0, 0, this.pixelWidth, this.pixelHeight);
                 } catch (e) {
                         console.error("Error in clearCanvas:", e);
                 }
         }
 
-        #setCanvasSize(canvas) {
-                if (!canvas) return;
-                canvas.height = this.map.length * this.drawSize;
-                canvas.width = this.map[0].length * this.drawSize;
-        }
 }
 
 /* Map template*/

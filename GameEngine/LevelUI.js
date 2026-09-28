@@ -25,12 +25,44 @@ class LevelUI {
 
         // Listen for keyboard events
         window.addEventListener('keydown', this.handleKeyDown.bind(this));
+
+        // The tutorial's "skip" button is drawn on the canvas, so its clicks come from the canvas
+        if (gameEngine && gameEngine.ctx) {
+            gameEngine.ctx.canvas.addEventListener('click', e => this.handleSkipClick(e));
+        }
+    }
+
+    // Where the tutorial's "skip" button is, in canvas pixels (top-left, clear of the timer and the DOM buttons)
+    static SKIP_BUTTON = {x: 20, y: 56, w: 200, h: 38};
+
+    // True while the tutorial is what's being played (LevelConfig.loadTutorial). It is not a floor: there is no best
+    // time to record, and finishing it leads to floor 1.
+    isTutorial() {
+        return !!(this.gameEngine && this.gameEngine.levelConfig && this.gameEngine.levelConfig.tutorial);
+    }
+
+    handleSkipClick(event) {
+        // Old engines keep their listeners on the shared canvas; only the one on screen may answer
+        if (window.LAST_ENGINE && window.LAST_ENGINE !== this.gameEngine) return;
+        if (!this.isTutorial() || this.isDisplayingComplete || this.isDisplayingDeath) return;
+        const b = LevelUI.SKIP_BUTTON;
+        const p = this.gameEngine.pointerToCanvas(event);
+        if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) this.leaveTutorial();
+    }
+
+    // Finishing or skipping the tutorial: remember that it is done, so Start no longer opens with it, and go to floor 1
+    leaveTutorial() {
+        Tutorial.markDone(Tutorial.storage());
+        for (const key in this.gameEngine.keys) this.gameEngine.keys[key] = false;
+        this.gameEngine.levelConfig.loadLevel(1);
     }
 
     // Handle keyboard shortcuts
     handleKeyDown(event) {
         // Make sure gameEngine and Player exist before checking properties
         if (!this.gameEngine || !this.gameEngine.Player) return;
+        // Playtesting in the level editor has its own death/clear screens; M and L must not leave the editor
+        if (this.gameEngine.editor && this.gameEngine.editor.mode === 'playtest') return;
 
         // Only respond to keyboard if a UI screen is showing
         if (!this.isDisplayingComplete && !this.gameEngine.Player.dead) return;
@@ -45,6 +77,7 @@ class LevelUI {
 
     // Returns true when the player has just finished the final floor
     isLastLevel() {
+        if (this.isTutorial()) return false;
         return this.gameEngine && this.gameEngine.levelConfig &&
                this.gameEngine.levelConfig.getCurrentLevel() >= 16;
     }
@@ -92,7 +125,9 @@ class LevelUI {
                 else if (this.isDisplayingComplete) {
                     this.hideLevelComplete();
 
-                    if (this.isLastLevel()) {
+                    if (this.isTutorial()) {
+                        this.leaveTutorial();
+                    } else if (this.isLastLevel()) {
                         // Final floor finished — send player back to main menu
                         this.cleanupGameState();
                         const ws = document.getElementById("welcomeScreen");
@@ -175,6 +210,12 @@ class LevelUI {
         if (this.isDisplayingComplete) return;
 
         this.isDisplayingComplete = true;
+
+        // The tutorial has no time to record. Clearing it counts as done even if the player leaves from this screen.
+        if (this.isTutorial()) {
+            Tutorial.markDone(Tutorial.storage());
+            return;
+        }
 
         // Update the best time cache before comparing times
         await this.updateBestTimeCache();
@@ -268,14 +309,21 @@ class LevelUI {
 
         // Load the current level
         if (this.gameEngine && this.gameEngine.levelConfig) {
-            console.log("Loading level:", this.gameEngine.levelConfig.currentLevel);
-            this.gameEngine.levelConfig.loadLevel(this.gameEngine.levelConfig.currentLevel);
+            if (this.gameEngine.levelConfig.tutorial) {
+                this.gameEngine.levelConfig.loadTutorial();
+            } else {
+                console.log("Loading level:", this.gameEngine.levelConfig.currentLevel);
+                this.gameEngine.levelConfig.loadLevel(this.gameEngine.levelConfig.currentLevel);
+            }
         }
     }
 
     async draw(ctx) {
         // Only draw if we're showing either death or complete screen
-        if (!this.isDisplayingComplete && !this.isDisplayingDeath) return;
+        if (!this.isDisplayingComplete && !this.isDisplayingDeath) {
+            if (this.isTutorial()) this.drawSkipButton(ctx);
+            return;
+        }
 
         // Get canvas center
         const centerX = ctx.canvas.width / 2;
@@ -297,6 +345,25 @@ class LevelUI {
         } else if (this.isDisplayingComplete) {
             this.drawLevelComplete(ctx, boxX, boxY, boxWidth, boxHeight, centerX, centerY);
         }
+    }
+
+    // The tutorial's "skip" button: a plain elevator-panel button in the corner, lit while the pointer is over it
+    drawSkipButton(ctx) {
+        const b = LevelUI.SKIP_BUTTON;
+        const mouse = this.gameEngine.mouse;
+        const hover = !!mouse && mouse.x >= b.x && mouse.x <= b.x + b.w && mouse.y >= b.y && mouse.y <= b.y + b.h;
+        ctx.save();
+        ctx.fillStyle = hover ? '#444' : '#333';
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.strokeStyle = hover ? '#ffcc00' : '#555';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(b.x, b.y, b.w, b.h);
+        ctx.fillStyle = '#ffcc00';
+        ctx.font = 'bold 16px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('SKIP TUTORIAL', b.x + b.w / 2, b.y + b.h / 2);
+        ctx.restore();
     }
 
     // Draw the death screen with emergency theme
@@ -409,7 +476,7 @@ class LevelUI {
             ctx.fillStyle = '#ffcc00';
             ctx.fillText('TOP FL', boxX + boxWidth - 45, boxY + 20);
         } else {
-            const nextLevel = this.gameEngine.levelConfig.getCurrentLevel() + 1;
+            const nextLevel = this.isTutorial() ? 1 : this.gameEngine.levelConfig.getCurrentLevel() + 1;
             ctx.font = 'bold 18px monospace';
             ctx.fillStyle = '#ff9900';
             ctx.textAlign = 'center';
@@ -430,7 +497,19 @@ class LevelUI {
         ctx.font = 'bold 40px monospace';
         ctx.fillStyle = '#ffcc00';
         ctx.textAlign = 'center';
-        ctx.fillText(this.isLastLevel() ? 'GAME COMPLETE' : 'FLOOR COMPLETE', centerX, boxY + 80);
+        ctx.fillText(this.isLastLevel() ? 'GAME COMPLETE' : this.isTutorial() ? 'TUTORIAL COMPLETE' : 'FLOOR COMPLETE', centerX, boxY + 80);
+
+        if (this.isTutorial()) {
+            // No times to show: the tutorial is untimed
+            ctx.font = 'bold 22px monospace';
+            ctx.fillStyle = '#33ff33';
+            ctx.textAlign = 'center';
+            ctx.fillText('You know the moves.', centerX, boxY + 145);
+            ctx.fillStyle = '#fff';
+            ctx.fillText('Floor 1 is next.', centerX, boxY + 185);
+            this.drawElevatorButtons(ctx, boxX, boxY, boxWidth, boxHeight, false);
+            return;
+        }
 
         // Display times in digital display style
         const displayWidth = 300;
@@ -519,10 +598,8 @@ class LevelUI {
                 // Only process clicks if either death or level complete is showing
                 if (!this.isDisplayingComplete && !this.isDisplayingDeath) return;
 
-                const rect = this.gameEngine.ctx.canvas.getBoundingClientRect();
-                const clickX = e.clientX - rect.left;
-                const clickY = e.clientY - rect.top;
-                const clickPoint = { x: clickX, y: clickY };
+                // In canvas pixels whatever the CSS scale (the old unscaled maths put the buttons in the wrong place)
+                const clickPoint = this.gameEngine.pointerToCanvas(e);
 
                 if (this.isPointInButton(clickPoint, leftButtonX, buttonY, buttonSize)) {
                     this.handleButtonAction('menu');
