@@ -10,9 +10,8 @@ function startGame(options = {}) {
     window.LAST_ENGINE = gameEngine;
     ASSET_MANAGER = new AssetManager(); // Declared globally, accessible everywhere if I set it to const the map not gonna load when pressing start
 
-    // Everything in a level is drawn as vector shapes: tiles (tileArt.js), the player (stickman.js), hazards, levers,
-    // the exit door and platforms (entityArt.js). Only UI images are still loaded here.
-    ASSET_MANAGER.queueDownload("./sprites/menu.png");
+    // Nothing to download: the level (tileArt.js, stickman.js, entityArt.js) and the menus (uiArt.js) are all vector.
+    // The asset manager stays for anything that needs an image later.
 
     ASSET_MANAGER.downloadAll(async () => {
         // Preload all level JSON files so LEVEL_LOADER is populated before the

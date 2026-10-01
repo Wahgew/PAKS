@@ -45,3 +45,34 @@ test('a gear is a single even-odd path with its hole', () => {
     assert.ok(wellFormed(g));
     assert.match(g, /fill-rule="evenodd"/);
 });
+
+test('every Levels-screen piece is well-formed SVG with no images', () => {
+    const pieces = {
+        scene: UIArt.levelsScene(), floor: UIArt.floorButton(), padlock: UIArt.padlock(), toxic: UIArt.toxicSign(),
+        radiation: UIArt.radiationSign(), caution: UIArt.cautionSign(), paks: UIArt.paksSign(), header: UIArt.clickLevelsHeader(),
+        reset: UIArt.panelButton('RESET LEVELS', 'reset'), menu: UIArt.menuIcon(),
+    };
+    for (const [name, s] of Object.entries(pieces)) {
+        assert.ok(s.startsWith('<svg') && wellFormed(s), name);
+        assert.doesNotMatch(s, /<image|sprites\//, name);
+    }
+});
+
+test('the scene has all twelve floor keys and their dots, in the old picture\'s coordinates', () => {
+    const s = UIArt.levelsScene();
+    assert.match(s, /viewBox="0 0 1800 1080"/);
+    for (let f = 2; f <= 12; f++) assert.match(s, new RegExp(`>${f}</text>`), `key ${f}`);
+    assert.equal((s.match(/r="18" fill="#0b0b0b"/g) || []).length, 14, '12 floors and the two navigation keys');
+});
+
+test('a panel button\'s label is narrowed to fit beside its icon', () => {
+    const size = s => Number(s.match(/font-size="(\d+)"[^>]*>[A-Z ]+<\/text>/)[1]);
+    const short = UIArt.panelButton('HOME', 'home', {width: 144, height: 51});
+    const long = UIArt.panelButton('RESET LEVELS', 'reset', {width: 215, height: 54});
+    assert.equal(size(short), Math.round(51 * 0.44), 'a short label gets the full size');
+    assert.ok(size(long) * 0.6 * 'RESET LEVELS'.length <= 215 - 54 * 0.62 - 30 + 1, 'a long one fits');
+});
+
+test('dataUri wraps markup as a CSS url', () => {
+    assert.match(UIArt.dataUri('<svg/>'), /^url\("data:image\/svg\+xml;charset=utf-8,%3Csvg%2F%3E"\)$/);
+});

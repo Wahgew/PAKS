@@ -28,7 +28,7 @@ class GameMenu {
         this.menuButton.style.padding = '0';
         this.menuButton.style.cursor = 'pointer';
         this.menuButton.style.zIndex = '1000';
-        this.menuButton.style.backgroundImage = 'url("./sprites/menu.png")';
+        this.menuButton.style.backgroundImage = UIArt.dataUri(UIArt.menuIcon());   // vector (uiArt.js)
         this.menuButton.style.backgroundSize = 'contain';
         this.menuButton.style.backgroundPosition = 'center';
         this.menuButton.style.backgroundRepeat = 'no-repeat';

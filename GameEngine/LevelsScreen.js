@@ -99,10 +99,6 @@ class LevelsScreen {
         this.levelsContainer.style.top = "50%";
         this.levelsContainer.style.transform = "translate(-50%, -50%)";
         this.levelsContainer.style.backgroundColor = "transparent";
-        this.levelsContainer.style.backgroundImage = "url('./sprites/levelBackground.jpg')";
-        this.levelsContainer.style.backgroundSize = "100%"; 
-        this.levelsContainer.style.backgroundPosition = "center";
-        this.levelsContainer.style.backgroundRepeat = "no-repeat";
         this.levelsContainer.style.display = "none"; 
         this.levelsContainer.style.zIndex = "3";
 
@@ -118,6 +114,17 @@ class LevelsScreen {
             `;
             document.head.appendChild(style);
         }
+
+        // The scene (wall, floor panel, the lift, the fire panel) as SVG, laid out as the old background picture was,
+        // and the stickman standing in the lift, drawn by the game's own code (uiArt.js, stickman.js)
+        const scene = document.createElement("div");
+        scene.style.cssText = "position:absolute;inset:0;pointer-events:none";
+        scene.innerHTML = UIArt.levelsScene();
+        this.levelsContainer.appendChild(scene);
+        const rider = document.createElement("canvas");
+        rider.style.cssText = "position:absolute;left:461px;top:282px;width:120px;height:214px;pointer-events:none";
+        this.levelsContainer.appendChild(rider);
+        UIArt.mountStickman(rider, {pose: "idle", scale: 2.6});
 
         // Manually create level buttons
         this.createLevel1Button();
@@ -192,8 +199,8 @@ class LevelsScreen {
         buttonContainer.style.top = `${y}px`;
         
         // Create the button image
-        const button = document.createElement("img");
-        button.src = "./sprites/buttons.png";
+        const button = document.createElement("div");
+        button.innerHTML = UIArt.floorButton();   // vector (uiArt.js)
         button.alt = `Level ${level}`;
         button.dataset.level = level;
         button.style.position = "absolute";
@@ -204,8 +211,8 @@ class LevelsScreen {
         button.style.zIndex = "1"; // Button below lock
         
         // Create the lock overlay - only for levels 1-12
-        const lockOverlay = document.createElement("img");
-        lockOverlay.src = "./sprites/lock.png";
+        const lockOverlay = document.createElement("div");
+        lockOverlay.innerHTML = UIArt.padlock();   // vector (uiArt.js)
         lockOverlay.className = "lock-overlay";
         lockOverlay.style.position = "absolute";
         lockOverlay.style.width = "24px";
@@ -458,8 +465,8 @@ class LevelsScreen {
     }
 
     createInstructionsButton(x, y, level, clickHandler) {
-        const button = document.createElement("img");
-        button.src = "./sprites/instructions.png";
+        const button = document.createElement("div");
+        button.innerHTML = UIArt.panelButton("INSTRUCTION", "instruction", {width: 225, height: 50});   // vector (uiArt.js)
         button.alt = `Instructions`;
         button.style.position = "absolute";
         button.style.width = "225px"; 
@@ -489,8 +496,8 @@ class LevelsScreen {
     }
 
     createResetLevelButtonElement(x, y, level, clickHandler) {
-        const button = document.createElement("img");
-        button.src = "./sprites/resetLevel.png";
+        const button = document.createElement("div");
+        button.innerHTML = UIArt.panelButton("RESET LEVELS", "reset", {width: 215, height: 54});   // vector (uiArt.js)
         button.alt = `Reset Levels`;
         button.style.position = "absolute";
         button.style.width = "215px"; 
@@ -521,8 +528,8 @@ class LevelsScreen {
 
 
     createHomeButtonElement(x, y, level, clickHandler) {
-        const button = document.createElement("img");
-        button.src = "./sprites/home.png";
+        const button = document.createElement("div");
+        button.innerHTML = UIArt.panelButton("HOME", "home", {width: 144, height: 51});   // vector (uiArt.js)
         button.alt = `Home`;
         button.style.position = "absolute";
         button.style.width = "144px"; 
@@ -614,8 +621,8 @@ class LevelsScreen {
         buttonContainer.style.zIndex = "5"; // Ensure it's above other elements
         
         // Create the radiation hazard button image
-        const button = document.createElement("img");
-        button.src = "./sprites/toxic.png"; // Update path to your radiation image
+        const button = document.createElement("div");
+        button.innerHTML = UIArt.toxicSign();   // vector (uiArt.js)
         button.alt = "Radiation Level";
         button.dataset.level = 13;
         button.style.position = "absolute";
@@ -681,8 +688,8 @@ class LevelsScreen {
         buttonContainer.style.zIndex = "5"; // Ensure it's above other elements
         
         // Create the toxic hazard button image
-        const button = document.createElement("img");
-        button.src = "./sprites/redToxic.png"; // Update path to your toxic image
+        const button = document.createElement("div");
+        button.innerHTML = UIArt.radiationSign();   // vector (uiArt.js)
         button.alt = "Toxic Level";
         button.dataset.level = 14;
         button.style.position = "absolute";
@@ -748,8 +755,8 @@ class LevelsScreen {
         buttonContainer.style.zIndex = "5"; // Ensure it's above other elements
         
         // Create the hazard button image
-        const button = document.createElement("img");
-        button.src = "./sprites/hazard.png"; // Update path to your biohazard or another hazard image
+        const button = document.createElement("div");
+        button.innerHTML = UIArt.cautionSign();   // vector (uiArt.js)
         button.alt = "Biohazard Level";
         button.dataset.level = 15;
         button.style.position = "absolute";
@@ -815,8 +822,8 @@ class LevelsScreen {
         buttonContainer.style.zIndex = "5"; // Ensure it's above other elements
         
         // Create the logo png button image
-        const button = document.createElement("img");
-        button.src = "./sprites/PAKS.png";
+        const button = document.createElement("div");
+        button.innerHTML = UIArt.paksSign();   // vector (uiArt.js)
         button.alt = "EXIT";
         button.dataset.level = 16;
         button.style.position = "absolute";
@@ -896,8 +903,8 @@ class LevelsScreen {
     }
 
     createClickLevelsButton() {
-        const button = document.createElement("img");
-        button.src = "./sprites/level.png"; 
+        const button = document.createElement("div");
+        button.innerHTML = UIArt.clickLevelsHeader();   // vector (uiArt.js)
         button.alt = "Click Levels Here";
         button.style.position = "absolute";
         button.style.width = "298px"; 
