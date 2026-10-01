@@ -6,12 +6,8 @@ class exitDoor {
         this.width = 276;
         this.height = 326;
     
-        // Load door sprite/image
-        //this.doorSprite = ASSET_MANAGER.getAsset("./sprites/exitDoor.png"); // You'll need to add this sprite
-        this.doorLock = ASSET_MANAGER.getAsset("./sprites/exit_door_locked.png");
-        this.doorUnlock = ASSET_MANAGER.getAsset("./sprites/exit_door_unlocked.png")
-        this.animLock  = new Animator(this.doorLock, 0, 0, this.width, this.height, 1, 0.1);
-        this.animUnlock  = new Animator(this.doorUnlock, 0, 0, this.width, this.height, 1, 0.1);
+        // How far the doors have slid open (0..1) since they unlocked; drawing only
+        this.openAmount = 0;
 
         // Door state
         this.isOpen = false;
@@ -34,19 +30,9 @@ class exitDoor {
     draw(ctx) {
         if (!ctx) return;
 
-        // if (this.doorSprite) {
-        //     // Draw door sprite
-        //     ctx.drawImage(this.doorSprite, this.x, this.y, this.width, this.height);
-        // } else {
-        //     // Fallback: draw a colored rectangle if sprite isn't loaded
-        //     ctx.fillStyle = "brown";
-        //     ctx.fillRect(this.x, this.y, this.width, this.height);
-        // }
-        if (this.isOpen) {
-            this.animUnlock.drawFrame(this.game.clockTick, ctx, this.x, this.y, 0.25);
-        } else  {
-            this.animLock.drawFrame(this.game.clockTick, ctx, this.x, this.y, 0.25);
-        }
+        // Vector drawing (entityArt.js): once unlocked, the doors slide open over about half a second
+        this.openAmount = this.isOpen ? Math.min(1, this.openAmount + (this.game.clockTick || 0) / 0.6) : 0;
+        EntityArt.exitDoor(ctx, this, !this.isOpen, this.openAmount);
 
         // Debug: draw collision box
         if (this.game.options.debugging) {

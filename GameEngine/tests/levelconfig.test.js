@@ -6,7 +6,7 @@ const {loadBrowserScripts, loadLevel} = require('./helpers/browserScripts.js');
 
 const win = {};
 const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js',
-    'bigblock.js', 'enemies.js', 'player.js', 'levelconfig.js', 'levelLoader.js'], {
+    'bigblock.js', 'enemies.js', 'stickman.js', 'entityArt.js', 'player.js', 'levelconfig.js', 'levelLoader.js'], {
     window: win,
     console: {log() {}, warn: console.warn, error: console.error},
     ASSET_MANAGER: {getAsset: () => ({width: 46, height: 106})},

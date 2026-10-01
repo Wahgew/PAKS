@@ -19,29 +19,13 @@ function startGame(options = {}) {
     ASSET_MANAGER.queueDownload("./sprites/block6_amber.png")
     ASSET_MANAGER.queueDownload("./sprites/block7_ocean.png")
     ASSET_MANAGER.queueDownload("./sprites/block8_burgundy.png")
-    // player assets
-    ASSET_MANAGER.queueDownload("./sprites/idle.png");
-    ASSET_MANAGER.queueDownload("./sprites/walk.png");
-    ASSET_MANAGER.queueDownload("./sprites/run.png");
-    ASSET_MANAGER.queueDownload("./sprites/jump.png");
-    ASSET_MANAGER.queueDownload("./sprites/skid.png");
-    ASSET_MANAGER.queueDownload("./sprites/slide.png");
-    ASSET_MANAGER.queueDownload("./sprites/wall-slide.png");
-    ASSET_MANAGER.queueDownload("./sprites/crouch.png");
-    ASSET_MANAGER.queueDownload("./sprites/fall.png");
+    // The player is drawn as a vector rig (stickman.js), so it needs no images
     ASSET_MANAGER.queueDownload("./sprites/menu.png");
 
-    // hazard assets
-    ASSET_MANAGER.queueDownload("./sprites/spike_small.png");
-    ASSET_MANAGER.queueDownload("./sprites/proj_small.png");
-    ASSET_MANAGER.queueDownload("./sprites/launcher_small.png");
+    // Spikes, launchers, projectiles, levers and the exit door are vector drawings (entityArt.js)
     // level assets
     ASSET_MANAGER.queueDownload("./sprites/plat_wide.png");
     ASSET_MANAGER.queueDownload("./sprites/plat_short.png");
-    ASSET_MANAGER.queueDownload("./sprites/leverOn.png");
-    ASSET_MANAGER.queueDownload("./sprites/leverOff.png");
-    ASSET_MANAGER.queueDownload("./sprites/exit_door_locked.png");
-    ASSET_MANAGER.queueDownload("./sprites/exit_door_unlocked.png");
     // transitions
     ASSET_MANAGER.queueDownload("./sprites/elevator_left.png");
     ASSET_MANAGER.queueDownload("./sprites/elevator_right.png");

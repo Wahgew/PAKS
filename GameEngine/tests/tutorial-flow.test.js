@@ -13,7 +13,7 @@ const store = () => {
 const win = {localStorage: store(), addEventListener() {}};
 const bestTimeWrites = [];
 const get = loadBrowserScripts(['tutorial.js', 'boundingBox.js', 'tileShapes.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js', 'hint.js',
-    'deathParticle.js', 'deathAnimate.js', 'bigblock.js', 'enemies.js', 'player.js', 'levelconfig.js', 'levelLoader.js', 'LevelUI.js'], {
+    'deathParticle.js', 'deathAnimate.js', 'bigblock.js', 'enemies.js', 'stickman.js', 'entityArt.js', 'player.js', 'levelconfig.js', 'levelLoader.js', 'LevelUI.js'], {
     window: win,
     console: {log() {}, warn: console.warn, error() {}},
     setTimeout: fn => fn(),                       // Player.kill() shows the death screen from a timer
