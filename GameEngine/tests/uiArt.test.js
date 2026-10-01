@@ -76,3 +76,13 @@ test('a panel button\'s label is narrowed to fit beside its icon', () => {
 test('dataUri wraps markup as a CSS url', () => {
     assert.match(UIArt.dataUri('<svg/>'), /^url\("data:image\/svg\+xml;charset=utf-8,%3Csvg%2F%3E"\)$/);
 });
+
+test('the instructions sheet is real text, with a drawing for every picture it asks for and no images', () => {
+    const s = UIArt.instructionsSheet();
+    assert.match(s, /ELEVATOR INSTRUCTIONS/);
+    assert.match(s, /W \/ SPACE = JUMP/);
+    assert.match(s, /WATCH OUT FOR THE HAZARDS/, 'spelt right (the old picture said HARZARDS)');
+    assert.doesNotMatch(s, /<img|sprites\//);
+    const arts = [...s.matchAll(/data-art="([\w-]+)"/g)].map(m => m[1]);
+    assert.deepEqual(arts.sort(), Object.keys(UIArt.INSTRUCTION_ART).sort());
+});

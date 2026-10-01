@@ -277,8 +277,84 @@ const UIArt = (() => {
         return `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}")`;
     }
 
+    // ---- Instructions sheet ----------------------------------------------------------------------------------------
+
+    function keyIcon(label, opts) { return svg(60, 56, keycap(30, 28, label, opts)); }
+    function navIcon(kind) { return svg(60, 56, navKey(30, 28, kind)); }
+    function dotIcon() { return svg(24, 24, '<circle cx="12" cy="12" r="9" fill="#0b0b0b"/><circle cx="12" cy="12" r="5" fill="none" stroke="#5a5a5a" stroke-width="2"/>'); }
+
+    function warningIcon() {
+        return svg(24, 24, '<path d="M12,2 L23,21 H1 Z" fill="#f5b800" stroke="#a87b00" stroke-width="1.2" stroke-linejoin="round"/>' +
+            '<rect x="11" y="8" width="2.4" height="7" rx="1" fill="#000"/><circle cx="12.2" cy="17.6" r="1.4" fill="#000"/>');
+    }
+
+    function sirenIcon() {
+        return svg(24, 24, '<rect x="4" y="18" width="16" height="4" rx="1" fill="#555"/><path d="M6,18 V12 a6,6 0 0 1 12,0 V18 Z" fill="#e2203a"/>' +
+            '<path d="M9,11 a3,3 0 0 1 3,-3" stroke="#fff" stroke-width="1.6" fill="none"/>' +
+            '<path d="M2,8 l3,1.5 M22,8 l-3,1.5 M12,1 v3" stroke="#e2203a" stroke-width="1.8" stroke-linecap="round"/>');
+    }
+
+    // W above A S D, as small keyboard keys
+    function wasdIcon() {
+        const key = (x, y, l) => `<rect x="${x}" y="${y}" width="20" height="20" rx="4" fill="#e6e6e6" stroke="#9a9a9a" stroke-width="2"/>` +
+            `<text x="${x + 10}" y="${y + 14.5}" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="11" fill="#555">${l}</text>`;
+        return svg(70, 46, key(25, 2, 'W') + key(2, 24, 'A') + key(25, 24, 'S') + key(48, 24, 'D'));
+    }
+
+    /**
+     * The Levels screen's instructions sheet as HTML: real text, the floor keys and padlocks as SVG, and canvases
+     * marked data-art for the game's own drawings of its entities (see paintInstructionArt).
+     */
+    function instructionsSheet() {
+        const row = (inner, extra = '') => `<div style="display:flex;align-items:center;justify-content:center;gap:6px;${extra}">${inner}</div>`;
+        const icon = (markup, w, h) => `<span style="display:inline-block;width:${w}px;height:${h}px">${markup}</span>`;
+        const art = (name, w, h) => `<canvas data-art="${name}" style="width:${w}px;height:${h}px"></canvas>`;
+        const text = (s, extra = '') => `<p style="margin:0;font:13px/1.25 ${FONT};color:#111;letter-spacing:.5px;${extra}">${s}</p>`;
+        return `<div style="box-sizing:border-box;width:100%;height:100%;padding:16px 22px;background:#cfd2d6;border:7px solid #4e5054;` +
+            `border-radius:30px;display:flex;flex-direction:column;gap:9px;overflow:hidden">` +
+            row(icon(warningIcon(), 26, 26) + `<h2 style="margin:0;font:24px ${FONT};color:#0b0b0b;letter-spacing:1px">ELEVATOR INSTRUCTIONS</h2>` + icon(sirenIcon(), 26, 26)) +
+            row(icon(keyIcon('1', {star: true}), 34, 32) + icon(dotIcon(), 18, 18) + '<span style="width:18px"></span>' +
+                icon(keyIcon('2'), 34, 32) + icon(padlock(), 20, 20) + '<span style="width:18px"></span>' +
+                icon(keyIcon('3'), 34, 32) + icon(padlock(), 20, 20)) +
+            text('. PLAYERS CAN NAVIGATE THROUGH THE LEVEL SELECTION, BUT EACH LEVEL WILL ONLY UNLOCK AFTER THE PLAYERS HAVE SUCCESSFULLY COMPLETED THE PRECEDING LEVEL.', 'text-align:center') +
+            row(`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">${row(icon(navIcon('open'), 34, 32) + icon(dotIcon(), 18, 18))}${text('WELCOME SCREEN')}</div>` +
+                `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">${row(icon(navIcon('close'), 34, 32) + icon(dotIcon(), 18, 18))}${text('BACK TO THE GAME')}</div>`) +
+            row(`<div style="flex:1;display:flex;align-items:center;gap:8px">${icon(wasdIcon(), 62, 41)}<div>${text('. A &amp; D = WALK')}${text('. W / SPACE = JUMP')}${text('. S = CROUCH &amp; SLIDE')}${text('. SHIFT = SPEED RUN')}</div></div>` +
+                `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">${row(art('spike', 30, 30) + art('rocket', 40, 30) + art('launcher', 32, 30))}${text('. ALWAYS WATCH OUT FOR THE HAZARDS', 'text-align:center')}</div>`) +
+            row(`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">${row(art('lever-up', 24, 36) + art('lever-down', 24, 36))}${text('. THE PLAYER NEEDS TO FLIP THE LEVERS TO UNLOCK THE DOOR', 'text-align:center')}</div>` +
+                `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">${art('door', 30, 36)}${text('. THE ELEVATOR DOOR SENDS YOU TO THE NEXT LEVEL', 'text-align:center')}</div>`) +
+            `</div>`;
+    }
+
+    // The entity drawings for the instructions sheet, each fitted into its canvas (browser only)
+    const INSTRUCTION_ART = {
+        spike: {w: 40, h: 40, draw: (A, c) => A.spike(c, {x: 0, y: 0, width: 40, height: 40, spin: 20})},
+        rocket: {w: 52, h: 30, draw: (A, c) => A.rocket(c, {x: 14, y: 0, width: 30, height: 30, direction: 'RIGHT', age: 0.3, seed: 0.4})},
+        launcher: {w: 58, h: 54, draw: (A, c) => A.launcher(c, {x: 0, y: 0, width: 58, height: 54, shotdirec: 'LEFT', time: 1, atkspd: 2})},
+        'lever-up': {w: 37, h: 54, draw: (A, c) => A.lever(c, {x: 0, y: 0, width: 23, height: 53, isFlipped: false}, 0)},
+        'lever-down': {w: 37, h: 54, draw: (A, c) => A.lever(c, {x: 0, y: 0, width: 23, height: 53, isFlipped: false}, 1)},
+        door: {w: 69, h: 82, draw: (A, c) => A.exitDoor(c, {x: 0, y: 0, width: 276, height: 326, scale: 0.25}, true, 0)},
+    };
+
+    function paintInstructionArt(root) {
+        if (typeof EntityArt === 'undefined') return;
+        const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        for (const canvas of root.querySelectorAll('canvas[data-art]')) {
+            const spec = INSTRUCTION_ART[canvas.dataset.art];
+            if (!spec) continue;
+            const w = parseFloat(canvas.style.width), h = parseFloat(canvas.style.height);
+            canvas.width = Math.round(w * dpr);
+            canvas.height = Math.round(h * dpr);
+            const ctx = canvas.getContext('2d');
+            const k = Math.min(w / spec.w, h / spec.h);
+            ctx.setTransform(dpr * k, 0, 0, dpr * k, dpr * (w - spec.w * k) / 2, dpr * (h - spec.h * k) / 2);
+            spec.draw(EntityArt, ctx);
+        }
+    }
+
     return {FONT, svg, gear, titleBackground, starButton, mountStickman, levelsScene, floorButton, padlock, toxicSign,
-        radiationSign, cautionSign, paksSign, panelButton, clickLevelsHeader, menuIcon, dataUri, KEY_ROWS, KEY_COLS, DOT_COLS};
+        radiationSign, cautionSign, paksSign, panelButton, clickLevelsHeader, menuIcon, dataUri, instructionsSheet,
+        paintInstructionArt, INSTRUCTION_ART, KEY_ROWS, KEY_COLS, DOT_COLS};
 })();
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -997,13 +997,12 @@ class LevelsScreen {
         instructionsPanel.style.zIndex = "10";
         instructionsPanel.style.background = "transparent"; 
         
-        const instructionsImage = document.createElement("img");
-        instructionsImage.src = "./sprites/instructionsUI.png"; 
-        instructionsImage.style.width = "100%";
-        instructionsImage.style.height = "100%";
-        instructionsImage.style.objectFit = "contain";
-        
-        instructionsPanel.appendChild(instructionsImage);
+        // The sheet as real text, with the floor keys as SVG and the hazards, levers and door drawn by the game (uiArt.js)
+        const sheet = document.createElement("div");
+        sheet.style.width = "100%";
+        sheet.style.height = "100%";
+        sheet.innerHTML = UIArt.instructionsSheet();
+        instructionsPanel.appendChild(sheet);
         
         const closeButton = document.createElement("button");
         closeButton.textContent = "×";
@@ -1029,6 +1028,7 @@ class LevelsScreen {
         
         instructionsPanel.appendChild(closeButton);
         document.body.appendChild(instructionsPanel);
+        UIArt.paintInstructionArt(instructionsPanel);
     }
 
     // Level loading with special handling for levels 13-16
