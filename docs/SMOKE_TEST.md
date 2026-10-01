@@ -248,7 +248,7 @@ Use a clean profile for the first-run checks (or press Reset Progress on the Lev
 - [ ] Walk and run: the foot on the ground stays planted against the floor while the body moves over it (no sliding), at any speed. Speeding up blends the walk into a run with no jump in the legs; holding or releasing Shift doesn't snap the pose.
 - [ ] Jump, fall and land: arms reach up on take-off, the figure tucks at the top and flails a little when falling fast; a high landing squashes it for a moment.
 - [ ] Skid (reverse direction while walking, without Shift): leans back with the front foot braced.
-- [ ] Crouch (`S` standing): a deep squat, hips low and back, arms held out in front. Slide (`S` while moving): leans back on a trailing hand, front leg out.
+- [ ] Crouch (`S` standing): a deep squat with the chest up and the arms folded at chest height (the Cossack squat dance pose). Slide (`S` while moving): leans back on a trailing hand, front leg out.
 - [ ] Wall slide: back to the wall, a hand and a foot on it, the other knee up. Turning to face the other way squeezes the figure through the middle rather than flipping in one frame.
 - [ ] No pose ever snaps from one frame to the next when changing state.
 - [ ] A soft shadow sits under the feet, shrinks and fades as you jump, and is gone high in the air or over a platform.

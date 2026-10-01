@@ -188,8 +188,10 @@ const Stickman = (() => {
     // Each returns a pose from {t: seconds in this state, time: rig clock, vx, vy, phase, squash}.
 
     // The crouch's shape, kept together so it is easy to tune
-    const SQUAT = {hip: 18, hipX: -7, lean: 0.75, head: -0.6, nFoot: {x: 8, y: 0}, fFoot: {x: -5, y: 0},
-        hand: {x: 23, y: 8}};   // hands relative to the shoulder
+    // Arms folded across the chest as in the Cossack squat dance: upper arms nearly level in front, forearms folded
+    // back level across the chest (the far one a little higher, so they read as crossed).
+    const SQUAT = {hip: 16, hipX: -5, lean: 0.18, head: -0.1, nFoot: {x: 8, y: 0}, fFoot: {x: -5, y: 0},
+        nArm: 1.3, nForearm: -1.62, fArm: 1.38, fForearm: -1.45};
 
     const CLIPS = {
         idle(c) {
@@ -218,16 +220,17 @@ const Stickman = (() => {
         },
 
         crouch(c) {
-            // A deep squat: hips down over the heels, knees up in front, arms reaching forward for balance (hands
-            // resting on the knees put the elbow right on the knee and read as a tangle). It breathes a little.
+            // A deep squat with the chest up and the arms folded, like the Cossack squat dance (hands resting on the
+            // knees put the elbow right on the knee and read as a tangle). It breathes a little.
             const breath = 0.5 - 0.5 * Math.cos(2 * Math.PI * c.time / 2.2);
             const lean = SQUAT.lean, hipX = SQUAT.hipX, hipY = -(SQUAT.hip + 0.4 * breath - c.squash * 0.5);
             const pose = standing({lean, head: SQUAT.head}, hipX, hipY, SQUAT.nFoot, SQUAT.fFoot);
-            const sh = shoulderAt(hipX, hipY, lean);
-            // Nearly straight arms with the slight bend upward: bent downward, the elbow lands on the knee
-            const n = armIK(sh.x, sh.y, sh.x + SQUAT.hand.x, sh.y + SQUAT.hand.y + breath, true);
-            const f = armIK(sh.x, sh.y, sh.x + SQUAT.hand.x - 2, sh.y + SQUAT.hand.y + 4 + breath, true);
-            return Object.assign(pose, {nArm: n.arm, nElbow: n.elbow, fArm: f.arm, fElbow: f.elbow});
+            // *Forearm is the forearm's direction from straight down, so the elbow is what folds it there
+            const bob = 0.04 * breath;
+            return Object.assign(pose, {
+                nArm: SQUAT.nArm - bob, nElbow: SQUAT.nForearm - SQUAT.nArm,
+                fArm: SQUAT.fArm - bob, fElbow: SQUAT.fForearm - SQUAT.fArm,
+            });
         },
 
         slide(c) {
