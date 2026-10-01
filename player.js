@@ -1,4 +1,7 @@
 class Player {
+    // The rig's name for each of this.STATES, by number
+    static RIG_STATES = ['idle', 'walk', 'run', 'skid', 'jump', 'slide', 'wall', 'crouch', 'fall'];
+
     constructor(game, x, y) {
         Object.assign(this, {game, x, y});
 
@@ -38,19 +41,6 @@ class Player {
             FALLING: 8
         };
 
-        // Load spritesheets (just right-facing versions)
-        this.sprites = {
-            idle: ASSET_MANAGER.getAsset("./sprites/idle.png"),
-            walk: ASSET_MANAGER.getAsset("./sprites/walk.png"),
-            run: ASSET_MANAGER.getAsset("./sprites/run.png"),
-            skid: ASSET_MANAGER.getAsset("./sprites/skid.png"),
-            jump: ASSET_MANAGER.getAsset("./sprites/jump.png"),
-            slide: ASSET_MANAGER.getAsset("./sprites/slide.png"),
-            wall_slide: ASSET_MANAGER.getAsset("./sprites/wall-slide.png"),
-            crouch: ASSET_MANAGER.getAsset("./sprites/crouch.png"),
-            fall: ASSET_MANAGER.getAsset("./sprites/fall.png"),
-        };
-
         this.facing = 1; // 0 = left, 1 = right
         this.state = this.STATES.IDLE;
         this.dead = false;
@@ -79,9 +69,9 @@ class Player {
         this.jumpBufferTimer = 0;   // Current buffer timer
         this.updateBB();
 
-        // Initialize animations
-        this.animations = {};
-        this.loadAnimations();
+        // The stickman is a vector rig (stickman.js), posed from the state and velocity every frame it is drawn.
+        // It only ever reads the physics, so nothing here changes how the player moves.
+        this.rig = new Stickman.Rig();
 
         this.map = this.game.entities.find(entity => entity instanceof drawMap);
         if (this.map) {
@@ -94,57 +84,6 @@ class Player {
         if (this.game.debugBox) {
             this.game.debugBox.addEventListener("change", () => this.tpPlayerDebug());
         }
-    }
-
-    loadAnimations() {
-        // Create animations with a simpler structure
-        // Parameters: spritesheet, xStart, yStart, width, height, frameCount, frameDuration
-
-        // Idle animation
-        this.animations[this.STATES.IDLE] = new Animator(
-            this.sprites.idle, -45, 27, 133, 208, 5, 0.15
-        );
-
-        // Walk animation
-        this.animations[this.STATES.WALKING] = new Animator(
-            this.sprites.walk, -10, 27, 138, 208, 5, 0.15
-        );
-
-        // Running animation
-        this.animations[this.STATES.RUNNING] = new Animator(
-            this.sprites.run, 67, 27, 201, 208, 5, 0.08
-        );
-
-        // Skidding animation (can reuse run with different parameters or use a different spritesheet)
-        this.animations[this.STATES.SKIDDING] = new Animator(
-            this.sprites.skid, -70, 27, 176, 208, 1, 1
-        );
-
-        // Jumping animation
-        this.animations[this.STATES.JUMPING] = new Animator(
-            this.sprites.jump, 0, 30, 188, 208, 1, 1
-        );
-
-        // Falling animation (can be the same as jumping or use different frames)
-        this.animations[this.STATES.FALLING] = new Animator(
-            this.sprites.fall, -25, 20, 170, 175, 3, 0.3
-        );
-
-        // Sliding animation
-        this.animations[this.STATES.SLIDING] = new Animator(
-            this.sprites.slide, 17, 67, 204, 175, 3, 0.6
-        );
-
-        // Wall sliding animation
-        this.animations[this.STATES.WALL_SLIDING] = new Animator(
-            this.sprites.wall_slide, -70, 35, 176, 175, 1, 1
-        );
-
-        // Crouching animation - using slide as temporary placeholder
-        // Replace this when you have a dedicated crouch spritesheet
-        this.animations[this.STATES.CROUCHING] = new Animator(
-            this.sprites.crouch, 0, 67, 186, 175, 1, 1
-        );
     }
 
     updateBB() {
@@ -223,6 +162,7 @@ class Player {
         this.game.entities.forEach(function (entity) {
             if (entity.BB && entity instanceof Projectile && that.BB.collide(entity.BB)) {
                 entity.removeFromWorld = true;
+                if (entity.explode) entity.explode();   // a launcher's rocket bursts where it hit
                 that.kill();
             } else if (entity.BB && (entity instanceof Spike || entity instanceof GlowingLaser) && that.BB.collide(entity.BB)) {
                 that.kill();
@@ -1109,11 +1049,14 @@ class Player {
                     });
                 }
 
-                // Create death animation at player's center position
+                // Create death animation at player's center position; the stickman comes apart from the pose it
+                // was last drawn in (the rig only moves when drawn, so this is exactly what was on screen)
                 this.deathAnimation = new DeathAnimation(
                     this.x + this.width / 2,
-                    this.y + this.height / 2
+                    this.y + this.height / 2,
+                    Stickman.segments(this.rig.joints(this.x + this.width / 2, this.y + this.height + this.footDrop()))
                 );
+                this.deathDrawnAt = null;
 
                 // Stop the timer
                 if (this.game.timer) {
@@ -1218,13 +1161,42 @@ class Player {
         return Number.isFinite(d) ? d : 0;
     }
 
+    // What the rig needs from the physics, with the state by the rig's name for it
+    rigInput() {
+        return {
+            state: Player.RIG_STATES[this.state],
+            vx: this.velocity.x,
+            vy: this.velocity.y,
+            grounded: this.isGrounded,
+            facing: this.facing === 0 ? -1 : 1,
+            wallSide: this.wallStickDirection === 'left' ? -1 : this.wallStickDirection === 'right' ? 1 : 0,
+        };
+    }
+
+    // A soft shadow on whatever is below: full under the feet, fading out by about 7 tiles up. Only tiles cast it
+    // (a platform or a big block under an airborne player doesn't), because that is the cheap check drawMap has.
+    drawShadow(ctx, feetX, feetY) {
+        let height = 0;
+        if (!this.isGrounded) {
+            if (!this.map) return;
+            const drop = this.map.getDropDistance(new BoundingBox(feetX - 1, this.y, 2, this.height), 180);
+            height = Math.min(drop.shape ?? Infinity, drop.solid ?? Infinity);
+            if (!Number.isFinite(height)) return;
+        }
+        Stickman.drawShadow(ctx, feetX, feetY + height, height);
+    }
+
     // Renders the player character
     draw(ctx) {
         // check if the player is dead first
         if (this.dead) {
             // Draw death animation if it exists
             if (this.deathAnimation) {
-                this.deathAnimation.update(this.game.clockTick);
+                // The game clock is stopped while dead, so the flying pieces are timed with the real clock
+                const now = Date.now();
+                const real = this.deathDrawnAt ? Math.min(0.05, (now - this.deathDrawnAt) / 1000) : 0;
+                this.deathDrawnAt = now;
+                this.deathAnimation.update(this.game.clockTick, real);
                 this.deathAnimation.draw(ctx);
             }
             return;
@@ -1232,47 +1204,13 @@ class Player {
 
         if (!ctx) return;
 
-        // grab current animation based on state
-        const animation = this.animations[this.state];
-
-        if (animation) {
-            ctx.save();
-
-            let adjustedY = this.y + this.footDrop();
-            if (this.state === this.STATES.SLIDING || this.state === this.STATES.CROUCHING) {
-                adjustedY = this.y + this.height/4;
-            }
-
-            if (this.facing === 0) { // left facing
-                // Additional offset for sliding animation when facing left
-                let xOffset = -this.x - this.width - 37;
-
-                // Apply special offset for sliding to left
-                if (this.state === this.STATES.SLIDING) {
-                    xOffset -= 40; // Adjust this value to align the sprite correctly
-                }
-
-                // Flip the context horizontally
-                ctx.scale(-1, 1);
-                animation.drawFrame(
-                    this.game.clockTick,
-                    ctx,
-                    xOffset,
-                    adjustedY,
-                    0.5
-                );
-            } else { // right facing
-                animation.drawFrame(
-                    this.game.clockTick,
-                    ctx,
-                    this.x - 37,
-                    adjustedY,
-                    0.5
-                );
-            }
-
-            ctx.restore();
-        }
+        // Pose the rig from what the physics is doing. It is advanced here, not in update(), so it only runs when the
+        // game is drawn (the headless tests never draw) and can never affect movement.
+        const feetX = this.x + this.width / 2;
+        const feetY = this.y + this.height + this.footDrop();
+        this.rig.update(this.game.clockTick, this.rigInput());
+        this.drawShadow(ctx, feetX, feetY);
+        Stickman.draw(ctx, this.rig.joints(feetX, feetY));
 
         // Draw debug box if debugging is enabled
         if (this.game.options.debugging) {

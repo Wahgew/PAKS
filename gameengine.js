@@ -34,6 +34,9 @@ class GameEngine {
         // store player instance
         this.Player = null;
         this.entityCount = 0;
+
+        // Device pixels per view pixel (see applyPixelRatio)
+        this.pixelRatio = 1;
     }
 
     // use async to wait for the DB to initialize
@@ -275,27 +278,60 @@ class GameEngine {
         this.entities.push(entity);
     }
 
-    /**
-     * Give the canvas a fixed size (the view of the level) instead of the level's size. Assigning canvas.width also
-     * resets the context, so image smoothing is set again here: the old code resized the canvas every frame, which
-     * kept smoothing on, and the game is drawn that way (main.js turns it off once, which never lasted).
-     */
+    /** Give the view a fixed size (the window onto the level) instead of the level's size. */
     setViewSize(w, h) {
-        const canvas = this.ctx.canvas;
-        if (canvas.width !== w) canvas.width = w;
-        if (canvas.height !== h) canvas.height = h;
-        this.ctx.imageSmoothingEnabled = true;
         this.camera.setView(w, h);
+        this.applyPixelRatio(this.pixelRatio || 1);
         if (typeof window !== 'undefined' && window.fitGameCanvas) window.fitGameCanvas();
     }
 
-    /** A mouse/pointer event's position in canvas pixels, correct at any CSS scale of the canvas. */
-    pointerToCanvas(e) {
+    /** The view's size in view pixels: what every drawing and pointer position uses, whatever the canvas's resolution. */
+    get viewW() { return this.camera.viewW; }
+    get viewH() { return this.camera.viewH; }
+
+    /**
+     * Size the canvas's pixel buffer at ratio device pixels per view pixel, keeping its CSS size the view's, so the game
+     * is drawn at the screen's real resolution instead of being stretched. Assigning canvas.width resets the context, so
+     * image smoothing is set again here: the old code resized the canvas every frame, which kept smoothing on, and the
+     * game is drawn that way (main.js turns it off once, which never lasted).
+     */
+    applyPixelRatio(ratio) {
         const canvas = this.ctx.canvas;
-        const r = canvas.getBoundingClientRect();
+        const bw = Math.round(this.viewW * ratio), bh = Math.round(this.viewH * ratio);
+        if (canvas.width !== bw) canvas.width = bw;
+        if (canvas.height !== bh) canvas.height = bh;
+        if (canvas.style) {
+            canvas.style.width = this.viewW + 'px';
+            canvas.style.height = this.viewH + 'px';
+        }
+        this.pixelRatio = bw / this.viewW;
+        this.ctx.imageSmoothingEnabled = true;
+    }
+
+    /**
+     * Device pixels per view pixel right now: how much CSS scales the canvas to fit the window, times the screen's pixel
+     * density. Capped, because past 2x (a 4K screen) the extra pixels cost far more to fill than they add.
+     */
+    targetPixelRatio() {
+        const canvas = this.ctx.canvas;
+        const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        const r = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
+        const css = r && r.width && this.viewW ? r.width / this.viewW : 1;
+        return Math.min(GameEngine.MAX_PIXEL_RATIO, Math.max(1, dpr * css));
+    }
+
+    /** Follow the window: called each frame, it only resizes the buffer when the ratio really changed. */
+    syncPixelRatio() {
+        const want = this.targetPixelRatio();
+        if (Math.abs(want - this.pixelRatio) > 0.02) this.applyPixelRatio(want);
+    }
+
+    /** A mouse/pointer event's position in view pixels, correct at any CSS scale and any canvas resolution. */
+    pointerToCanvas(e) {
+        const r = this.ctx.canvas.getBoundingClientRect();
         return {
-            x: (e.clientX - r.left) * canvas.width / (r.width || 1),
-            y: (e.clientY - r.top) * canvas.height / (r.height || 1),
+            x: (e.clientX - r.left) * this.viewW / (r.width || 1),
+            y: (e.clientY - r.top) * this.viewH / (r.height || 1),
         };
     }
 
@@ -339,17 +375,18 @@ class GameEngine {
             transform: this.ctx.getTransform()
         }); */
     
+        // Screen space is view pixels scaled to the canvas's resolution; everything below draws in view pixels
+        this.syncPixelRatio();
+        const ratio = this.pixelRatio;
+        this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
         // Black outside the level: a level smaller than the view is centred in it, and drawMap paints only its own area
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
         this.ctx.fillStyle = 'black';
-        this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-    
-        // Reset any transformations
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-    
+        this.ctx.fillRect(0, 0, this.viewW, this.viewH);
+
         // World space: the map and everything in the level are drawn through the camera
         this.ctx.save();
-        this.ctx.setTransform(...this.camera.transform());
+        this.ctx.setTransform(...this.camera.transform(ratio));
 
         // Draw from front to back (map first, then entities)
         // Find and draw map first
@@ -394,7 +431,7 @@ class GameEngine {
             const padding = 10;
     
             // Position in top center
-            const displayX = (this.ctx.canvas.width / 2) - (displayWidth / 2);
+            const displayX = (this.viewW / 2) - (displayWidth / 2);
             const displayY = 20;
     
     
@@ -490,3 +527,6 @@ class GameEngine {
     }
 }
 // KV Le was here :)
+
+// Device pixels per view pixel are capped here (see targetPixelRatio)
+GameEngine.MAX_PIXEL_RATIO = 2;

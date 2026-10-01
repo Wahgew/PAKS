@@ -117,9 +117,14 @@ const Camera = (() => {
             return {left: this.x, top: this.y, right: this.x + this.worldW, bottom: this.y + this.worldH};
         }
 
-        /** Canvas transform [a, b, c, d, e, f] for world drawing, with whole-pixel translation so tile edges stay sharp. */
-        transform() {
-            return [this.zoom, 0, 0, this.zoom, -Math.round(this.x * this.zoom), -Math.round(this.y * this.zoom)];
+        /**
+         * Canvas transform [a, b, c, d, e, f] for world drawing, with whole-pixel translation so tile edges stay sharp.
+         * pixelRatio: device pixels per view pixel (the canvas is drawn at the screen's resolution); the translation
+         * is rounded in device pixels.
+         */
+        transform(pixelRatio = 1) {
+            const z = this.zoom * pixelRatio;
+            return [z, 0, 0, z, -Math.round(this.x * z), -Math.round(this.y * z)];
         }
     }
 

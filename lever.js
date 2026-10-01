@@ -12,17 +12,8 @@ class Lever {
         // Initialize flip state based on direction
         this.isFlipped = (this.direction === 'LEFT');
 
-        // Load spritesheet
-        this.spritesheet = ASSET_MANAGER.getAsset("./sprites/leverOn.png");
-        this.spritesheet2 = ASSET_MANAGER.getAsset("./sprites/leverOff.png")
-
-        // Create animator with the actual image dimensions
-        const imageWidth = this.spritesheet.width;   // Use actual image width
-        const imageHeight = this.spritesheet.height; // Use actual image height
-
-        // Create animator with full sprite dimensions
-        this.animatorUn = new Animator(this.spritesheet, 0, 0, imageWidth, imageHeight, 1, 0.1);
-        this.animatorCol = new Animator(this.spritesheet2, 0, 0, imageWidth, imageHeight, 1, 0.1);
+        // How far the handle has swung down once pulled (0..1); drawing only
+        this.flip = 0;
 
         this.velocity = {x: 0, y: 0};
         this.updateBB();
@@ -48,25 +39,9 @@ class Lever {
             ctx.strokeRect(this.x, this.y, this.width, this.height);
         }
 
-        // Save the current context state
-        ctx.save();
-
-        if (this.isFlipped) {
-            // Set up horizontal flipping transformation
-            ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
-            ctx.scale(-1, 1);
-            ctx.translate(-(this.x + this.width / 2), -(this.y + this.height / 2));
-        }
-
-        // Draw the sprite
-        if (!this.collected) {
-            this.animatorUn.drawFrame(this.game.clockTick, ctx, this.x, this.y, 0.5);
-        } else {
-            this.animatorCol.drawFrame(this.game.clockTick, ctx, this.x, this.y, 0.5);
-        }
-
-        // Restore the context to its original state
-        ctx.restore();
+        // Vector drawing (entityArt.js): the handle swings down over a fifth of a second when pulled
+        this.flip = this.collected ? Math.min(1, this.flip + (this.game.clockTick || 0) / 0.2) : 0;
+        EntityArt.lever(ctx, this, this.flip);
     }
 }
 

@@ -10,41 +10,8 @@ function startGame(options = {}) {
     window.LAST_ENGINE = gameEngine;
     ASSET_MANAGER = new AssetManager(); // Declared globally, accessible everywhere if I set it to const the map not gonna load when pressing start
 
-    // "block/tiles"
-    ASSET_MANAGER.queueDownload("./sprites/block.png");
-    ASSET_MANAGER.queueDownload("./sprites/block2.png");
-    ASSET_MANAGER.queueDownload("./sprites/block3.png");
-    ASSET_MANAGER.queueDownload("./sprites/block4.png");
-    ASSET_MANAGER.queueDownload("./sprites/block5_forestgreen.png")
-    ASSET_MANAGER.queueDownload("./sprites/block6_amber.png")
-    ASSET_MANAGER.queueDownload("./sprites/block7_ocean.png")
-    ASSET_MANAGER.queueDownload("./sprites/block8_burgundy.png")
-    // player assets
-    ASSET_MANAGER.queueDownload("./sprites/idle.png");
-    ASSET_MANAGER.queueDownload("./sprites/walk.png");
-    ASSET_MANAGER.queueDownload("./sprites/run.png");
-    ASSET_MANAGER.queueDownload("./sprites/jump.png");
-    ASSET_MANAGER.queueDownload("./sprites/skid.png");
-    ASSET_MANAGER.queueDownload("./sprites/slide.png");
-    ASSET_MANAGER.queueDownload("./sprites/wall-slide.png");
-    ASSET_MANAGER.queueDownload("./sprites/crouch.png");
-    ASSET_MANAGER.queueDownload("./sprites/fall.png");
-    ASSET_MANAGER.queueDownload("./sprites/menu.png");
-
-    // hazard assets
-    ASSET_MANAGER.queueDownload("./sprites/spike_small.png");
-    ASSET_MANAGER.queueDownload("./sprites/proj_small.png");
-    ASSET_MANAGER.queueDownload("./sprites/launcher_small.png");
-    // level assets
-    ASSET_MANAGER.queueDownload("./sprites/plat_wide.png");
-    ASSET_MANAGER.queueDownload("./sprites/plat_short.png");
-    ASSET_MANAGER.queueDownload("./sprites/leverOn.png");
-    ASSET_MANAGER.queueDownload("./sprites/leverOff.png");
-    ASSET_MANAGER.queueDownload("./sprites/exit_door_locked.png");
-    ASSET_MANAGER.queueDownload("./sprites/exit_door_unlocked.png");
-    // transitions
-    ASSET_MANAGER.queueDownload("./sprites/elevator_left.png");
-    ASSET_MANAGER.queueDownload("./sprites/elevator_right.png");
+    // Nothing to download: the level (tileArt.js, stickman.js, entityArt.js) and the menus (uiArt.js) are all vector.
+    // The asset manager stays for anything that needs an image later.
 
     ASSET_MANAGER.downloadAll(async () => {
         // Preload all level JSON files so LEVEL_LOADER is populated before the
