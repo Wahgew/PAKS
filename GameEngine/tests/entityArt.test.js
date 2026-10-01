@@ -194,7 +194,7 @@ test('a firework burst spreads out, stays within reach and is gone after its lif
 test('a launcher holds a rocket, is empty just after firing, and reloads before the next shot', () => {
     const fills = time => { const {ctx, rec} = recorder();
         EntityArt.launcher(ctx, {x: 100, y: 200, width: 58, height: 54, shotdirec: 'LEFT', time, atkspd: 2}); return rec.fills; };
-    const hasRocket = time => fills(time).includes(EntityArt.COLORS.rocketNose);
+    const hasRocket = time => fills(time).includes(EntityArt.COLORS.rocketLip);
     assert.ok(!hasRocket(0.05), 'empty right after a shot');
     assert.ok(hasRocket(0.4), 'the next rocket is sliding in');
     assert.ok(hasRocket(1.9), 'loaded before it fires');

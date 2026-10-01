@@ -257,7 +257,7 @@ Use a clean profile for the first-run checks (or press Reset Progress on the Lev
 
 **Entities**
 - [ ] Spikes are red saws that spin.
-- [ ] Launchers face their firing direction with a red firework rocket loaded, nose out. Before each shot the fuse sparks and the light on the back warms up; the launcher kicks back with a muzzle flash, the barrel is empty for a moment, and the next rocket slides in.
+- [ ] Launchers face their firing direction with a red bottle rocket loaded (tube, cone cap, stick and a curled black fuse), nose out. Before each shot the fuse tip sparks and the light on the back warms up; the launcher kicks back with a muzzle flash, the barrel is empty for a moment, and the next rocket slides in.
 - [ ] Rockets fly nose first with a flickering flame and sparks, and kill on contact as the saw projectiles did (same size and speed). Where a rocket hits a wall, a block or the player it bursts into a coloured firework, which keeps going behind the death screen.
 - [ ] Levers: touching one swings the handle down and turns the knob from red to green. Mirrored levers (direction LEFT) are drawn mirrored.
 - [ ] Exit door: red crosses while it needs levers; once open, the indicator turns green and the doors slide apart onto a lit lift car. A floor with no levers opens its door as it loads.

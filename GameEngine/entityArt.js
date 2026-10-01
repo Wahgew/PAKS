@@ -17,13 +17,14 @@ const EntityArt = (() => {
         housingEdge: '#3a3a40',
         metal: '#8d9097',
         metalDark: '#6c6f76',
-        rocketLight: '#ff5a4f',
-        rocketDark: '#c41f24',
-        rocketNose: '#e0312f',
-        rocketOutline: '#5a0f12',
-        rocketStripe: '#fff4e8',
-        rocketFin: '#f2c14e',
-        nozzle: '#3a3a40',
+        rocketLight: '#e05a56',
+        rocketDark: '#b23733',
+        rocketEnd: '#8f2a27',
+        rocketLip: '#6e1f1c',
+        rocketOutline: '#4a1312',
+        stick: '#d8b27a',
+        stickShade: '#a98552',
+        fuse: '#1d1d22',
         flameOuter: 'rgba(255, 128, 32, 0.9)',
         flameInner: 'rgba(255, 236, 140, 0.95)',
         spark: '#ffe08a',
@@ -125,24 +126,27 @@ const EntityArt = (() => {
         return v - Math.floor(v);
     }
 
-    // A cartoon firework rocket in its own frame: nose pointing along +x, centred on the origin, 31 long and 24 across
-    // the fins. flame: draw the exhaust (a loaded rocket has none); time and seed make it flicker and spark.
+    // A classic bottle rocket in its own frame: nose pointing along +x, centred on the origin. A red paper tube, a
+    // wider cone cap whose lip overhangs it, and a long wooden stick down one side. flame: lit and flying, the fuse
+    // burnt away; unlit (in a launcher) a black fuse curls from the tail. time and seed make the flame flicker and spark.
+    const FUSE_TIP = {x: -21, y: 2.5};
     function rocketShape(ctx, {flame = true, time = 0, seed = 0} = {}) {
         ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
         if (flame) {
             const flicker = 0.5 + 0.25 * Math.sin(time * 41 + seed * 7) + 0.25 * Math.sin(time * 67 + seed * 3);
             const len = 9 + 6 * flicker;
             ctx.beginPath();
-            ctx.moveTo(-14, -4.5);
-            ctx.quadraticCurveTo(-14 - len * 0.6, -4, -14 - len, 0);
-            ctx.quadraticCurveTo(-14 - len * 0.6, 4, -14, 4.5);
+            ctx.moveTo(-10, -4);
+            ctx.quadraticCurveTo(-10 - len * 0.6, -4, -10 - len, 0);
+            ctx.quadraticCurveTo(-10 - len * 0.6, 4, -10, 4);
             ctx.closePath();
             ctx.fillStyle = COLORS.flameOuter;
             ctx.fill();
             ctx.beginPath();
-            ctx.moveTo(-14, -2.5);
-            ctx.quadraticCurveTo(-14 - len * 0.35, -2, -14 - len * 0.6, 0);
-            ctx.quadraticCurveTo(-14 - len * 0.35, 2, -14, 2.5);
+            ctx.moveTo(-10, -2.2);
+            ctx.quadraticCurveTo(-10 - len * 0.35, -2, -10 - len * 0.6, 0);
+            ctx.quadraticCurveTo(-10 - len * 0.35, 2, -10, 2.2);
             ctx.closePath();
             ctx.fillStyle = COLORS.flameInner;
             ctx.fill();
@@ -153,48 +157,55 @@ const EntityArt = (() => {
                 const r = rnd(seed, tick * 7 + k);
                 ctx.globalAlpha = 0.9 - k * 0.15;
                 ctx.beginPath();
-                ctx.arc(-16 - len * 0.5 - k * 2.6 - r * 2, (r - 0.5) * (4 + k * 2), 0.9 + r * 0.6, 0, TAU);
+                ctx.arc(-12 - len * 0.5 - k * 2.6 - r * 2, (r - 0.5) * (4 + k * 2), 0.9 + r * 0.6, 0, TAU);
                 ctx.fill();
             }
             ctx.globalAlpha = 1;
+        } else {
+            // The fuse, curling away from the middle of the tail
+            ctx.beginPath();
+            ctx.moveTo(-10, 0);
+            ctx.quadraticCurveTo(-15, -4.5, -17, -0.5);
+            ctx.quadraticCurveTo(-18.5, 3, FUSE_TIP.x, FUSE_TIP.y);
+            ctx.lineWidth = 1.1;
+            ctx.strokeStyle = COLORS.fuse;
+            ctx.stroke();
         }
-        // Nozzle
-        ctx.fillStyle = COLORS.nozzle;
-        ctx.fillRect(-14, -3.5, 3, 7);
-        // Fins
-        ctx.beginPath();
-        ctx.moveTo(-11, -5); ctx.lineTo(-15, -12); ctx.lineTo(-4, -5.5); ctx.closePath();
-        ctx.moveTo(-11, 5); ctx.lineTo(-15, 12); ctx.lineTo(-4, 5.5); ctx.closePath();
-        ctx.fillStyle = COLORS.rocketFin;
-        ctx.fill();
-        ctx.lineWidth = 1.1;
+        // The stick, taped along the underside and trailing far behind
+        ctx.fillStyle = COLORS.stick;
+        ctx.fillRect(-26, 5, 29, 1.8);
+        ctx.fillStyle = COLORS.stickShade;
+        ctx.fillRect(-26, 6.2, 29, 0.6);
+        // The tube, lit from above, with a slightly darker open end at the tail
+        ctx.lineWidth = 1;
         ctx.strokeStyle = COLORS.rocketOutline;
-        ctx.stroke();
-        // Body, lit from above
-        ctx.beginPath();
-        roundRect(ctx, -11, -6, 20, 12, 2.5);
-        const g = ctx.createLinearGradient(0, -6, 0, 6);
+        const g = ctx.createLinearGradient(0, -5, 0, 5);
         g.addColorStop(0, COLORS.rocketLight);
         g.addColorStop(1, COLORS.rocketDark);
+        ctx.beginPath();
+        roundRect(ctx, -10, -5, 17, 10, 1.2);
         ctx.fillStyle = g;
         ctx.fill();
         ctx.stroke();
-        // Stripes
-        ctx.fillStyle = COLORS.rocketStripe;
-        ctx.fillRect(-7, -6, 2.5, 12);
-        ctx.fillRect(1, -6, 2.5, 12);
-        // Nose cone
+        ctx.fillStyle = COLORS.rocketEnd;
+        ctx.fillRect(-10, -5, 1.6, 10);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.fillRect(-8, -3.8, 14, 1.4);
+        // The cone cap: wider than the tube, so its lip overhangs it
+        const c = ctx.createLinearGradient(0, -7.5, 0, 7.5);
+        c.addColorStop(0, COLORS.rocketLight);
+        c.addColorStop(1, COLORS.rocketDark);
         ctx.beginPath();
-        ctx.moveTo(9, -6);
-        ctx.quadraticCurveTo(15, -4, 17, 0);
-        ctx.quadraticCurveTo(15, 4, 9, 6);
+        ctx.moveTo(6, -7.5);
+        ctx.lineTo(17, 0);
+        ctx.lineTo(6, 7.5);
         ctx.closePath();
-        ctx.fillStyle = COLORS.rocketNose;
+        ctx.fillStyle = c;
         ctx.fill();
         ctx.stroke();
-        // A highlight along the top
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.fillRect(-9, -4.5, 16, 1.5);
+        // The cap's lip, a darker band where it sits on the tube
+        ctx.fillStyle = COLORS.rocketLip;
+        ctx.fillRect(6, -7.5, 1.4, 15);
     }
 
     const HEADING = {RIGHT: 0, DOWN: Math.PI / 2, LEFT: Math.PI, UP: -Math.PI / 2};
@@ -315,11 +326,11 @@ const EntityArt = (() => {
             ctx.rect(bx, by - 8, bw, bh + 16);   // the rocket never shows outside the housing while it loads
             ctx.clip();
             ctx.globalAlpha = e;
-            ctx.translate(w * 0.36 + (1 - e) * 24, h / 2);
+            ctx.translate(w * 0.36 + (1 - e) * 10, h / 2);   // short slide: the stick must stay inside the housing
             ctx.rotate(Math.PI);
             ctx.scale(0.95, 0.95);
             rocketShape(ctx, {flame: false});
-            // The fuse is lit just before it fires
+            // The fuse is lit just before it fires: sparks at its tip
             if (charge > 0.75) {
                 const tick = Math.floor(since * 30);
                 ctx.fillStyle = COLORS.spark;
@@ -327,7 +338,7 @@ const EntityArt = (() => {
                     const r = rnd(k + 1, tick + k * 5);
                     ctx.globalAlpha = 0.6 + 0.4 * r;
                     ctx.beginPath();
-                    ctx.arc(-15 - r * 4, (r - 0.5) * 6, 0.8 + r, 0, TAU);
+                    ctx.arc(FUSE_TIP.x - r * 3, FUSE_TIP.y + (r - 0.5) * 5, 0.8 + r, 0, TAU);
                     ctx.fill();
                 }
             }
