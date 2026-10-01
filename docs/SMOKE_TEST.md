@@ -264,6 +264,14 @@ Use a clean profile for the first-run checks (or press Reset Progress on the Lev
 - [ ] Level editor: entities look the same as in the game and don't animate.
 - [ ] `/sprite-preview.html` loads with no console errors; every control works (state, speed, playback, zoom, background, joints, shadow, Turn around, Pause, Die) and the entity row animates.
 
+**Full resolution and vector UI**
+- [ ] On a 1440p/4K or high-DPI screen the game is sharp (lines and text crisp, not blurry); resizing the window or zooming the browser keeps it sharp. No seams or lines show between tiles at any window size.
+- [ ] Tiles: the level's theme colour with a lighter top edge on floors and a darker bottom edge under ceilings; slopes and curves lit along their surface. Big blocks get the same edges. Platforms are steel bars with a dark outline.
+- [ ] Title screen: the rings, gears, block cluster and P.A.K.S logo; START, ABOUT ME and LEVELS stars with readable text and the hover tilt; the stickman hopping on the logo. TUTORIAL and LEVEL EDITOR still work.
+- [ ] Levels screen: the lift with the stickman breathing inside, the floor panel (padlocks on locked floors, the star on floor 1), the fire panel, CLICK LEVELS HERE, RESET LEVELS, HOME, INSTRUCTION. Every floor button, the two navigation keys and the hidden mystery-floor buttons (the three signs on the emergency panel, the P.A.K.S sign) still work and line up.
+- [ ] INSTRUCTION opens the sheet with real text and the game's own drawings of the hazards, levers and door; × closes it.
+- [ ] The in-game menu icon (top right) is crisp.
+
 ## 18. Known Issues to Watch
 
 
@@ -276,5 +284,5 @@ Use a clean profile for the first-run checks (or press Reset Progress on the Lev
 - **Level 14 duplicate levers:** Two lever objects are placed at identical coordinates. Confirm the exit door opens after collecting the correct number of unique levers.
 - **Corner clipping (pre-existing):** a diagonal jump or fall into the corner of a full block can nick the corner by a few pixels for a frame before it resolves. Not a slope bug; the original game does it too.
 - **Slope feet:** the hitbox rests on its higher corner on a slope, so with Debug on the box hovers above the surface while the stickman's feet touch it. Expected. The legs don't bend to the slope angle.
-- **Stickman sharpness:** on a 1440p or 4K window the canvas is still stretched by CSS, so lines are a little soft; part 2 renders at full resolution.
+- **Death/complete screen buttons:** they answer clicks only after the mouse has moved over the canvas (pre-existing). Normal play always moves the mouse first.
 - **JSON level loading:** Open the browser console on load and verify no `Failed to load levels/level_XX.json` errors appear. If they do, the game is likely being served from `file://` instead of HTTP.

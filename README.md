@@ -31,6 +31,7 @@ You play a stickman trying to reach the top of a building, one elevator floor at
 - **Lounge and elevator music** playlist
 - **Large levels:** the game draws a fixed 76x41-tile view and scrolls with you on bigger levels, so tiles and sprites stay the same size at any level size and on any screen (up to 300x300 tiles)
 - **Level editor:** paint tiles (including every slope shape), place spikes, launchers, lasers, platforms, levers, blocks and hint signs, move the spawn and exit, playtest instantly, and open or save level JSON, all in the browser
+- **Crisp at any size:** the game draws at your screen's real resolution (up to 2x), and the tiles, platforms, title screen, Levels screen and instructions are all vector art, with no sprite images left
 - **Debug mode** with a level selector, unlock-all button and click-to-teleport
 
 ### Controls
@@ -87,7 +88,9 @@ GameEngine/
 ├── levels/              # level_00.json … level_16.json — one JSON file per floor — plus tutorial.json
 ├── player.js            # Player physics and states; draws the stickman rig
 ├── stickman.js          # The vector stickman: skeleton, IK, pose clips, crossfades, drawing (no game dependencies)
-├── entityArt.js         # Vector drawings of spikes, launchers, projectiles, levers and the exit door
+├── entityArt.js         # Vector drawings of spikes, launchers and rockets, levers, the exit door and platforms
+├── tileArt.js           # Vector tiles in the level's theme colour, with lit edges (no game dependencies)
+├── uiArt.js             # The menus as SVG: title screen, Levels screen, instructions, menu icon
 ├── sprite-preview.html  # Open /sprite-preview.html to watch every stickman state and entity animate
 ├── platform.js, lever.js, bigblock.js, enemies.js   # Level entities and hazards
 ├── hint.js              # Hint sign entity: text drawn in the level (the tutorial is made of these)
@@ -96,7 +99,7 @@ GameEngine/
 ├── levelProgressManager.js, leveltimesmanager.js    # Saved progress and best times
 ├── audiomanager.js, volumnecontrolui.js             # Music and volume
 ├── tests/               # node --test suites (geometry, collision regression, headless player physics, level model and editor, tutorial, stickman and entity art)
-├── sprites/             # Tile, platform and UI images (the old player and entity sprites are kept but no longer used)
+├── sprites/             # Just the Molot font and the About Us picture: everything else is drawn as vector art
 └── sounds/              # Music and sound effects
 ```
 
@@ -122,7 +125,7 @@ Created as the team project for TCSS 491. The original project plan aimed for a 
 The course is over, but the project isn't. Planned next steps:
 
 - [x] Redesign the stickman as a scalable vector rig with smooth, speed-driven animation (see `sprite-preview.html`)
-- [ ] Remake all entities/sprites as clean, scalable vector art: spikes, launchers, projectiles, levers, the exit door and the death effect are done; menus, blocks and platforms next, rendered at your screen's full resolution
+- [x] Remake all entities/sprites as clean, scalable vector art: hazards, levers, the exit door, tiles, platforms and every menu, drawn at your screen's full resolution
 - [x] Sloped and curved level geometry — 45° and 26.6°/63.4° slopes and quarter circles with SAT collision (arbitrary polygons to come)
 - [x] In-browser level editor with save/load (custom levels are not yet playable from the Levels screen)
 - [x] Data-driven levels (JSON) — all 17 levels loaded from `GameEngine/levels/` at runtime
