@@ -36,52 +36,8 @@ class drawMap {
                         console.log("Using random color combination");
                 }
                 gameEngine.currentColor = this.random2;
-/*
- * NEW BLOCK COLOR REFERENCE
- * -------------------------
- * This is a reference guide for the colors to use when creating
- * the new block PNG images. Each block should use the specified
- * color scheme and size of 314x313.
- */
-
-// BLOCK 5: FOREST GREEN THEME
-// ---------------------------
-// Main block color: #3C9A66 (slightly brighter than the BigBlock color)
-// BigBlock color for reference: #2E8B57
-// Background color that pairs with this: #D4E6CB (light sage)
-
-// BLOCK 6: AMBER/GOLD THEME
-// -------------------------
-// Main block color: #B87333 (slightly darker copper-gold)
-// BigBlock color for reference: #CD853F
-// Background color that pairs with this: #FFF8DC (cornsilk)
-
-// BLOCK 7: OCEAN BLUE THEME
-// -------------------------
-// Main block color: #3D85C6 (medium bright blue)
-// BigBlock color for reference: #20639B
-// Background color that pairs with this: #E0F7FA (very light cyan)
-
-// BLOCK 8: BURGUNDY THEME
-// ----------------------
-// Main block color: #96223F (rich wine red)
-// BigBlock color for reference: #820933
-// Background color that pairs with this: #F5E9EB (very light pink)
-
-                /*
-                 * HOW TO CREATE THE BLOCK PNGs
-                 * ---------------------------
-                 * 1. Use the exact same dimensions as your existing blocks (314x313)
-                 * 2. Use the color codes specified above
-                 * 3. Maintain the same style/shading pattern as your existing blocks
-                 * 4. Save in PNG format with the specified filenames
-                 *
-                 * Filename convention:
-                 * - block5_forestgreen.png
-                 * - block6_amber.png
-                 * - block7_oceanblue.png
-                 * - block8_burgundy.png
-                 */
+                // The coordinated themes pair tile colours 4-7 (forest green, amber, ocean, burgundy; TileArt.PALETTE) with
+                // backgrounds 9-12 and the matching big-block colours (bigblock.js)
 
 // COLOR COMBINATIONS QUICK REFERENCE
 // ----------------------------------
