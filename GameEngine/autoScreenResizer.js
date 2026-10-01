@@ -127,9 +127,11 @@ class AutoScreenResizer {
      */
     applyScaling() {
         const innerWrapper = document.getElementById('game-inner-wrapper');
-        if (!innerWrapper || !this.canvas.width || !this.canvas.height) return;
+        // The canvas's CSS size is the game's view; its pixel buffer may be bigger (the engine draws at the screen's resolution)
+        const w = this.canvas.clientWidth || this.canvas.width, h = this.canvas.clientHeight || this.canvas.height;
+        if (!innerWrapper || !w || !h) return;
 
-        const scale = Math.min(window.innerWidth / this.canvas.width, window.innerHeight / this.canvas.height);
+        const scale = Math.min(window.innerWidth / w, window.innerHeight / h);
         innerWrapper.style.transform = `scale(${scale})`;
         innerWrapper.style.transformOrigin = 'center center';
     }

@@ -34,6 +34,10 @@ const EntityArt = (() => {
         knobOff: '#e32b2b',
         knobOn: '#2fcf55',
         frame: '#d3dee6',
+        plat: '#a9abb0',
+        platLight: '#d2d4d8',
+        platDark: '#86888d',
+        platOutline: '#141416',
         door: '#9aa4ad',
         doorShade: '#87919a',
         doorTop: '#5a6168',
@@ -365,6 +369,39 @@ const EntityArt = (() => {
         ctx.restore();
     }
 
+    // ---- Platform ------------------------------------------------------------------------------------------------
+
+    // platform: {x, y, width, height}: the old sprite's look, a steel bar with a dark rounded outline, now lit from
+    // above with a rivet every 50px or so
+    function platform(ctx, p) {
+        const {x, y, width: w, height: h} = p;
+        const r = Math.min(h / 2, 6);
+        ctx.save();
+        ctx.beginPath();
+        roundRect(ctx, x + 1, y + 1, w - 2, h - 2, r);
+        const g = ctx.createLinearGradient(0, y, 0, y + h);
+        g.addColorStop(0, COLORS.platLight);
+        g.addColorStop(0.55, COLORS.plat);
+        g.addColorStop(1, COLORS.platDark);
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = COLORS.platOutline;
+        ctx.stroke();
+        // A highlight along the top face
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.fillRect(x + r, y + 3, w - 2 * r, 1.5);
+        // Rivets
+        const n = Math.max(2, Math.round(w / 50));
+        ctx.fillStyle = COLORS.platOutline;
+        for (let i = 0; i < n; i++) {
+            ctx.beginPath();
+            ctx.arc(x + (i + 0.5) * w / n, y + h * 0.6, 1.3, 0, TAU);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
     // ---- Lever -----------------------------------------------------------------------------------------------------
 
     // The lever's drawing is the old sprite's size (half of 73x107), wider than its 23x53 hitbox as the sprite was
@@ -499,7 +536,7 @@ const EntityArt = (() => {
         ctx.restore();
     }
 
-    return {COLORS, LEVER_ART, FIREWORK_LIFE, saw, spike, projectile, rocket, rocketShape, firework, fireworkPoint, launcher, lever, exitDoor};
+    return {COLORS, LEVER_ART, FIREWORK_LIFE, saw, spike, projectile, platform, rocket, rocketShape, firework, fireworkPoint, launcher, lever, exitDoor};
 })();
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -81,7 +81,7 @@ class PlaytestUI {
 
     draw(ctx) {
         this.editor.fitCanvas();   // the editing overlay isn't in the world now, so this is the per-frame hook
-        const w = ctx.canvas.width, h = ctx.canvas.height;
+        const w = this.editor.game.viewW, h = this.editor.game.viewH;
         ctx.save();
         ctx.textAlign = 'center';
         if (this._death || this._complete) {
@@ -289,7 +289,7 @@ class LevelEditor {
         const size = LevelModel.TILE_SIZE;
         const r = this.canvas.getBoundingClientRect();
         return {sx: c.x, sy: c.y, px: w.x, py: w.y, col: Math.floor(w.x / size), row: Math.floor(w.y / size),
-            scale: (r.width / this.canvas.width) * this.game.camera.zoom};
+            scale: (r.width / this.game.viewW) * this.game.camera.zoom};
     }
 
     onWheel(ev) {

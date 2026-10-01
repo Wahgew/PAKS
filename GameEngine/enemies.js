@@ -284,11 +284,6 @@ class Laser {
         this.reverse = false;
         this.time = 0;
 
-        // Load spritesheet
-        this.spritesheet = ASSET_MANAGER.getAsset("./sprites/laser_test.png");
-
-        // Create animator with full sprite dimensions
-        this.animator = new Animator(this.spritesheet, 0, 0, this.width, this.height, 1, 0.1);
         this.velocity = {x: 0, y: 0};
         this.updateBB();
     }
@@ -704,7 +699,7 @@ function updateMovement(game, object) { // consider option to make reverse coord
         this.width = ;
 
         // Load spritesheet
-        this.spritesheet = ASSET_MANAGER.getAsset("./sprites/temptest.png");
+        this.spritesheet = ASSET_MANAGER.getAsset("./sprites/yourSprite.png");   // an example: queue it in main.js
 
         // Create animator with full sprite dimensions
         this.animator = new Animator(this.spritesheet, 0, 0, this.width, this.height, 1, 0.1);

@@ -24,17 +24,23 @@ class WelcomeScreen {
         this.welcomeContainer.style.top = "50%";
         this.welcomeContainer.style.transform = "translate(-50%, -50%)";
         this.welcomeContainer.style.backgroundColor = "transparent";
-        this.welcomeContainer.style.backgroundImage = "url('./sprites/BG.webp')";
-        // Zoom in the background image slightly while preserving its aspect ratio:
-        this.welcomeContainer.style.backgroundSize = "100%";
-        this.welcomeContainer.style.backgroundPosition = "center";
-        this.welcomeContainer.style.backgroundRepeat = "no-repeat";
         this.welcomeContainer.style.display = "flex";
         this.welcomeContainer.style.flexDirection = "column";
         this.welcomeContainer.style.alignItems = "center";
         this.welcomeContainer.style.justifyContent = "center";
         this.welcomeContainer.style.textAlign = "center";
         this.welcomeContainer.style.zIndex = "2";
+
+        // Background (wall, rings, gears, logo) as SVG behind everything, and the stickman leaping on the logo, drawn
+        // by the game's own code (uiArt.js, stickman.js)
+        const background = document.createElement("div");
+        background.style.cssText = "position:absolute;inset:0;z-index:-1;pointer-events:none";
+        background.innerHTML = UIArt.titleBackground();
+        this.welcomeContainer.appendChild(background);
+        const leaper = document.createElement("canvas");
+        leaper.style.cssText = "position:absolute;left:612px;top:20px;width:90px;height:150px;pointer-events:none";
+        this.welcomeContainer.appendChild(leaper);
+        UIArt.mountStickman(leaper, {pose: 'leap'});
 
         // Create button container
         const buttonContainer = document.createElement("div");
@@ -46,16 +52,20 @@ class WelcomeScreen {
 
         // Define buttons - replace startCallback with goToGame
         const buttons = [
-            { src: "./sprites/start.png", callback: () => this.goToGame(), width: "150px" },
-            { src: "./sprites/aboutme.png", callback: this.aboutCallback, width: "120px" },
-            { src: "./sprites/levels.png", callback: this.levelsCallback, width: "150px" }
+            { label: "START", rotate: -12, callback: () => this.goToGame(), size: 150 },
+            { label: "ABOUT\nME", rotate: 40, textRotate: -4, callback: this.aboutCallback, size: 130, about: true },
+            { label: "LEVELS", rotate: 12, callback: this.levelsCallback, size: 150 }
         ];
 
-        // Create buttons
+        // Create buttons: four-pointed stars with the label as real text (uiArt.js)
         buttons.forEach(button => {
-            const buttonImg = document.createElement("img");
-            buttonImg.src = button.src;
-            buttonImg.style.width = button.width;
+            const buttonImg = document.createElement("div");
+            buttonImg.className = "title-star";
+            buttonImg.innerHTML = UIArt.starButton(button.label, {rotate: button.rotate, textRotate: button.textRotate, size: button.size, fontSize: 40});
+            buttonImg.style.width = button.size + "px";
+            buttonImg.style.height = button.size + "px";
+            buttonImg.setAttribute("role", "button");
+            buttonImg.setAttribute("aria-label", button.label.replace("\n", " "));
             buttonImg.style.cursor = "pointer";
             buttonImg.style.transition = "0.3s ease-in-out";
 
@@ -70,7 +80,7 @@ class WelcomeScreen {
             });
 
             // About Me button uses the overlay; other buttons hide the welcome screen.
-            if (button.src.includes("aboutme")) {
+            if (button.about) {
                 buttonImg.addEventListener("click", () => {
                     this.showAboutOverlay();
                 });

@@ -2,17 +2,6 @@ class drawMap {
         constructor(drawSize, gameEngine) {
                 this.drawSize = drawSize;
                 this.game = gameEngine;
-                this.block = ASSET_MANAGER.getAsset("./sprites/block.png");
-                console.log("DrawMap initialized with size:", drawSize);
-                this.blocks = [
-                        ASSET_MANAGER.getAsset("./sprites/block.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block2.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block3.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block4.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block5_forestgreen.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block6_amber.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block7_ocean.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block8_burgundy.png")];
                 this.colors = [
                         // Original 9 colors
                         "pink",
@@ -43,56 +32,12 @@ class drawMap {
                 } else {
                         // Completely random selection from all options
                         this.random = Math.floor(Math.random() * this.colors.length);
-                        this.random2 = Math.floor(Math.random() * this.blocks.length);
+                        this.random2 = Math.floor(Math.random() * TileArt.PALETTE.length);
                         console.log("Using random color combination");
                 }
                 gameEngine.currentColor = this.random2;
-/*
- * NEW BLOCK COLOR REFERENCE
- * -------------------------
- * This is a reference guide for the colors to use when creating
- * the new block PNG images. Each block should use the specified
- * color scheme and size of 314x313.
- */
-
-// BLOCK 5: FOREST GREEN THEME
-// ---------------------------
-// Main block color: #3C9A66 (slightly brighter than the BigBlock color)
-// BigBlock color for reference: #2E8B57
-// Background color that pairs with this: #D4E6CB (light sage)
-
-// BLOCK 6: AMBER/GOLD THEME
-// -------------------------
-// Main block color: #B87333 (slightly darker copper-gold)
-// BigBlock color for reference: #CD853F
-// Background color that pairs with this: #FFF8DC (cornsilk)
-
-// BLOCK 7: OCEAN BLUE THEME
-// -------------------------
-// Main block color: #3D85C6 (medium bright blue)
-// BigBlock color for reference: #20639B
-// Background color that pairs with this: #E0F7FA (very light cyan)
-
-// BLOCK 8: BURGUNDY THEME
-// ----------------------
-// Main block color: #96223F (rich wine red)
-// BigBlock color for reference: #820933
-// Background color that pairs with this: #F5E9EB (very light pink)
-
-                /*
-                 * HOW TO CREATE THE BLOCK PNGs
-                 * ---------------------------
-                 * 1. Use the exact same dimensions as your existing blocks (314x313)
-                 * 2. Use the color codes specified above
-                 * 3. Maintain the same style/shading pattern as your existing blocks
-                 * 4. Save in PNG format with the specified filenames
-                 *
-                 * Filename convention:
-                 * - block5_forestgreen.png
-                 * - block6_amber.png
-                 * - block7_oceanblue.png
-                 * - block8_burgundy.png
-                 */
+                // The coordinated themes pair tile colours 4-7 (forest green, amber, ocean, burgundy; TileArt.PALETTE) with
+                // backgrounds 9-12 and the matching big-block colours (bigblock.js)
 
 // COLOR COMBINATIONS QUICK REFERENCE
 // ----------------------------------
@@ -240,58 +185,35 @@ class drawMap {
                 const size = this.drawSize;
                 const rowFrom = view ? Math.max(0, Math.floor(view.top / size)) : 0;
                 const rowTo = view ? Math.min(this.map.length - 1, Math.floor(view.bottom / size)) : this.map.length - 1;
-                for (let i = rowFrom; i <= rowTo; i++) {
-                        const colFrom = view ? Math.max(0, Math.floor(view.left / size)) : 0;
-                        const colTo = view ? Math.min(this.map[i].length - 1, Math.floor(view.right / size)) : this.map[i].length - 1;
-                        for (let j = colFrom; j <= colTo; j++) {
-                                if (this.map[i][j] === 1) {  // If it's a solid tile
-                                        const x = j * this.drawSize;
-                                        const y = i * this.drawSize;
+                const colFrom = view ? Math.max(0, Math.floor(view.left / size)) : 0;
+                const lastCol = Math.ceil(this.pixelWidth / size) - 1;
+                const colTo = view ? Math.min(lastCol, Math.floor(view.right / size)) : lastCol;
+                // Vector tiles in the level's theme colour (tileArt.js); random2 picks the colour, as it picked the block image
+                TileArt.drawTiles(ctx, this.map, size, {rowFrom, rowTo, colFrom, colTo}, this.random2);
 
-                                        try {
-                                                ctx.drawImage(
-                                                    this.blocks[this.random2],
-                                                    x,
-                                                    y,
-                                                    this.drawSize,
-                                                    this.drawSize
-                                                );
-
-                                                // Draw collision boxes if debugging is enabled
-                                                if (this.game.options.debugging) {
-                                                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-                                                        ctx.strokeRect(x, y, this.drawSize, this.drawSize);
-                                                }
-                                        } catch (e) {
-                                                console.error("Error drawing tile at", x, y, e);
+                if (this.game.options.debugging) {
+                        for (let i = rowFrom; i <= rowTo; i++) {
+                                for (let j = colFrom; j <= Math.min(colTo, this.map[i].length - 1); j++) {
+                                        const id = this.map[i][j];
+                                        if (id === 1) {
+                                                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                                                ctx.strokeRect(j * size, i * size, size, size);
+                                        } else if (id) {
+                                                this.#drawShapeDebug(ctx, id, j * size, i * size);
                                         }
-                                } else if (this.map[i][j] !== 0) {
-                                        this.#drawShape(ctx, this.map[i][j], j * this.drawSize, i * this.drawSize);
                                 }
                         }
                 }
         }
 
-        // Sloped/curved tile: the same block sprite, clipped to the shape's outline so it matches the theme.
-        #drawShape(ctx, id, x, y) {
+        // Debug view of a sloped/curved tile: its outline plus the convex pieces collision actually uses
+        #drawShapeDebug(ctx, id, x, y) {
                 const shape = TileShapes.get(id, this.drawSize);
                 if (!shape) return;
-
-                ctx.save();
-                ctx.beginPath();
-                shape.outline.forEach((p, k) => k === 0 ? ctx.moveTo(x + p.x, y + p.y) : ctx.lineTo(x + p.x, y + p.y));
-                ctx.closePath();
-                ctx.clip();
-                ctx.drawImage(this.blocks[this.random2], x, y, this.drawSize, this.drawSize);
-                ctx.restore();
-
-                if (this.game.options.debugging) {
-                        // Outline plus the convex pieces collision actually uses
-                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-                        ctx.stroke(this.#shapePath(shape.outline, x, y));
-                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)';
-                        shape.pieces.forEach(piece => ctx.stroke(this.#shapePath(piece.pts, x, y)));
-                }
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.stroke(this.#shapePath(shape.outline, x, y));
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)';
+                shape.pieces.forEach(piece => ctx.stroke(this.#shapePath(piece.pts, x, y)));
         }
 
         #shapePath(pts, x, y) {
