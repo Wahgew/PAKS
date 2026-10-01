@@ -172,3 +172,57 @@ test('pixelWidth and pixelHeight are the level size in pixels', () => {
     assert.equal(empty.pixelWidth, 0);
     assert.equal(empty.pixelHeight, 0);
 });
+
+// A canvas whose on-screen (CSS) size can be set, as the window fit would
+function hiDpiEngine(cssWidth, dpr) {
+    const game = makeEngine(1900, 1025);
+    win.devicePixelRatio = dpr;
+    win.fitGameCanvas = () => {};
+    game.ctx.canvas.style = {};
+    game.ctx.canvas.getBoundingClientRect = () => ({left: 10, top: 20, width: cssWidth, height: cssWidth * 1025 / 1900});
+    game.setViewSize(Camera.VIEW_W, Camera.VIEW_H);
+    return game;
+}
+
+test('the canvas is drawn at the screen\'s resolution: its buffer grows, its CSS size and every drawing stay in view pixels', () => {
+    const game = hiDpiEngine(1900, 2);   // shown at its own size on a 2x screen
+    game.draw();
+    assert.equal(game.pixelRatio, 2);
+    assert.equal(game.ctx.canvas.width, 3800);
+    assert.equal(game.ctx.canvas.height, 2050);
+    assert.equal(game.ctx.canvas.style.width, '1900px');
+    assert.equal(game.viewW, 1900);
+    const transforms = game.ctx.log.filter(([n]) => n === 'setTransform').map(([, a]) => plain(a));
+    assert.deepEqual(transforms[0], [2, 0, 0, 2, 0, 0], 'screen space is view pixels times the ratio');
+    const cam = plain(game.camera.transform(2));
+    assert.deepEqual(transforms[1], cam, 'the world goes through the camera at the same ratio');
+    const black = game.ctx.log.find(([n, , f]) => n === 'fillRect' && f === 'black');
+    assert.deepEqual(plain(black[1]), [0, 0, 1900, 1025], 'cleared in view pixels');
+    win.devicePixelRatio = undefined;
+});
+
+test('the resolution follows the window and the screen, and is capped', () => {
+    assert.equal(hiDpiEngine(950, 2).pixelRatio, 1, 'half size on a 2x screen: one device pixel per view pixel');
+    const big = hiDpiEngine(2850, 2);
+    big.draw();
+    assert.equal(big.pixelRatio, 2, 'a 4K-sized window on a 2x screen would be 3x, capped at 2');
+    const small = hiDpiEngine(700, 1);
+    small.draw();
+    assert.equal(small.pixelRatio, 1, 'never below 1');
+    win.devicePixelRatio = undefined;
+});
+
+test('pointer positions are in view pixels whatever the canvas resolution', () => {
+    const game = hiDpiEngine(950, 2);
+    game.applyPixelRatio(2);   // even with a 2x buffer
+    const p = plain(game.pointerToCanvas({clientX: 10 + 475, clientY: 20 + 256.25}));
+    assert.ok(Math.abs(p.x - 950) < 1e-9 && Math.abs(p.y - 512.5) < 1e-9, JSON.stringify(p));
+    win.devicePixelRatio = undefined;
+});
+
+test('the camera rounds its translation in device pixels', () => {
+    const cam = new Camera();
+    cam.x = 10.3; cam.y = 4.6; cam.zoom = 1;
+    assert.deepEqual(plain(cam.transform(2)), [2, 0, 0, 2, -21, -9]);
+    assert.deepEqual(plain(cam.transform()), [1, 0, 0, 1, -10, -5]);
+});

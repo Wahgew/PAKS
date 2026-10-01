@@ -162,8 +162,7 @@ class LevelUI {
 
             // Clear the canvas
             if (this.gameEngine.ctx) {
-                const canvas = this.gameEngine.ctx.canvas;
-                this.gameEngine.ctx.clearRect(0, 0, canvas.width, canvas.height);
+                this.gameEngine.ctx.clearRect(0, 0, this.gameEngine.viewW, this.gameEngine.viewH);
             }
 
             // Hide the game canvas
@@ -326,8 +325,8 @@ class LevelUI {
         }
 
         // Get canvas center
-        const centerX = ctx.canvas.width / 2;
-        const centerY = ctx.canvas.height / 2;
+        const centerX = this.gameEngine.viewW / 2;
+        const centerY = this.gameEngine.viewH / 2;
 
         // Calculate dimensions
         const boxWidth = 500;
@@ -337,7 +336,7 @@ class LevelUI {
 
         // Draw semi-transparent overlay for background
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.fillRect(0, 0, this.gameEngine.viewW, this.gameEngine.viewH);
 
         // Check which screen to draw - using explicit flag for death
         if (this.isDisplayingDeath) {
@@ -423,7 +422,7 @@ class LevelUI {
         // Flashing emergency light effect
         if (Math.floor(Date.now() / 300) % 2 === 0) {
             ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.fillRect(0, 0, this.gameEngine.viewW, this.gameEngine.viewH);
         }
     }
 
