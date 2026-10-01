@@ -263,7 +263,8 @@
         const cells = [
             ['spike', 40, c => EntityArt.spike(c, {x: 0, y: 0, width: 40, height: 40, spin: ent.spin})],
             ['spike (moving)', 40, c => EntityArt.spike(c, {x: Math.sin(ent.t * 2) * 12, y: 0, width: 40, height: 40, spin: ent.spin})],
-            ['projectile', 30, c => EntityArt.projectile(c, {x: ((ent.t * 60) % 60) - 30, y: 0, width: 30, height: 30, spin: ent.spin, direction: 'RIGHT'})],
+            ['rocket', 30, c => EntityArt.rocket(c, {x: ((ent.t * 60) % 60) - 30, y: 0, width: 30, height: 30, direction: 'RIGHT', age: ent.t, seed: 0.3})],
+            ['firework', 30, c => EntityArt.firework(c, 15, 15, ent.t % 1.4, Math.floor(ent.t / 1.4) * 0.37)],
             ...['LEFT', 'UP', 'RIGHT', 'DOWN'].map((d, i) => ['launcher ' + d.toLowerCase(), 54,
                 c => EntityArt.launcher(c, {x: 0, y: 0, width: 58, height: 54, shotdirec: d, time: (ent.t + i * 0.3) % 1.5, atkspd: 1.5})]),
             ['lever', 53, c => EntityArt.lever(c, {x: 0, y: 0, width: 23, height: 53, isFlipped: false}, ent.lever)],

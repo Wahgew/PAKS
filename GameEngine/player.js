@@ -162,6 +162,7 @@ class Player {
         this.game.entities.forEach(function (entity) {
             if (entity.BB && entity instanceof Projectile && that.BB.collide(entity.BB)) {
                 entity.removeFromWorld = true;
+                if (entity.explode) entity.explode();   // a launcher's rocket bursts where it hit
                 that.kill();
             } else if (entity.BB && (entity instanceof Spike || entity instanceof GlowingLaser) && that.BB.collide(entity.BB)) {
                 that.kill();

@@ -4,6 +4,8 @@
 // Anything that animates takes its progress as an argument, so the entity classes own all state.
 const EntityArt = (() => {
     const TAU = Math.PI * 2;
+    const RELOAD_DELAY = 0.15;   // a launcher's barrel stays empty this long after a shot
+    const RELOAD_TIME = 0.5;     // then the next rocket slides in over this long (less if it fires faster)
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
     const ease = t => t * t * (3 - 2 * t);
 
@@ -15,7 +17,16 @@ const EntityArt = (() => {
         housingEdge: '#3a3a40',
         metal: '#8d9097',
         metalDark: '#6c6f76',
-        arrow: '#e0312f',
+        rocketLight: '#ff5a4f',
+        rocketDark: '#c41f24',
+        rocketNose: '#e0312f',
+        rocketOutline: '#5a0f12',
+        rocketStripe: '#fff4e8',
+        rocketFin: '#f2c14e',
+        nozzle: '#3a3a40',
+        flameOuter: 'rgba(255, 128, 32, 0.9)',
+        flameInner: 'rgba(255, 236, 140, 0.95)',
+        spark: '#ffe08a',
         plate: '#56585e',
         plateEdge: '#3d3f44',
         slot: '#18181a',
@@ -107,6 +118,150 @@ const EntityArt = (() => {
         saw(ctx, cx, cy, r, (p.spin || 0) * Math.PI / 180, {teeth: 13, hook: 0, hole: 0.24});
     }
 
+    // A repeatable random number in [0, 1) for (seed, i), so sparks and bursts look random but draw the same
+    // every time for the same inputs (and tests can check them)
+    function rnd(seed, i) {
+        const v = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
+        return v - Math.floor(v);
+    }
+
+    // A cartoon firework rocket in its own frame: nose pointing along +x, centred on the origin, 31 long and 24 across
+    // the fins. flame: draw the exhaust (a loaded rocket has none); time and seed make it flicker and spark.
+    function rocketShape(ctx, {flame = true, time = 0, seed = 0} = {}) {
+        ctx.lineJoin = 'round';
+        if (flame) {
+            const flicker = 0.5 + 0.25 * Math.sin(time * 41 + seed * 7) + 0.25 * Math.sin(time * 67 + seed * 3);
+            const len = 9 + 6 * flicker;
+            ctx.beginPath();
+            ctx.moveTo(-14, -4.5);
+            ctx.quadraticCurveTo(-14 - len * 0.6, -4, -14 - len, 0);
+            ctx.quadraticCurveTo(-14 - len * 0.6, 4, -14, 4.5);
+            ctx.closePath();
+            ctx.fillStyle = COLORS.flameOuter;
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(-14, -2.5);
+            ctx.quadraticCurveTo(-14 - len * 0.35, -2, -14 - len * 0.6, 0);
+            ctx.quadraticCurveTo(-14 - len * 0.35, 2, -14, 2.5);
+            ctx.closePath();
+            ctx.fillStyle = COLORS.flameInner;
+            ctx.fill();
+            // A few sparks shed behind the flame
+            const tick = Math.floor(time * 30);
+            ctx.fillStyle = COLORS.spark;
+            for (let k = 0; k < 5; k++) {
+                const r = rnd(seed, tick * 7 + k);
+                ctx.globalAlpha = 0.9 - k * 0.15;
+                ctx.beginPath();
+                ctx.arc(-16 - len * 0.5 - k * 2.6 - r * 2, (r - 0.5) * (4 + k * 2), 0.9 + r * 0.6, 0, TAU);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+        }
+        // Nozzle
+        ctx.fillStyle = COLORS.nozzle;
+        ctx.fillRect(-14, -3.5, 3, 7);
+        // Fins
+        ctx.beginPath();
+        ctx.moveTo(-11, -5); ctx.lineTo(-15, -12); ctx.lineTo(-4, -5.5); ctx.closePath();
+        ctx.moveTo(-11, 5); ctx.lineTo(-15, 12); ctx.lineTo(-4, 5.5); ctx.closePath();
+        ctx.fillStyle = COLORS.rocketFin;
+        ctx.fill();
+        ctx.lineWidth = 1.1;
+        ctx.strokeStyle = COLORS.rocketOutline;
+        ctx.stroke();
+        // Body, lit from above
+        ctx.beginPath();
+        roundRect(ctx, -11, -6, 20, 12, 2.5);
+        const g = ctx.createLinearGradient(0, -6, 0, 6);
+        g.addColorStop(0, COLORS.rocketLight);
+        g.addColorStop(1, COLORS.rocketDark);
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.stroke();
+        // Stripes
+        ctx.fillStyle = COLORS.rocketStripe;
+        ctx.fillRect(-7, -6, 2.5, 12);
+        ctx.fillRect(1, -6, 2.5, 12);
+        // Nose cone
+        ctx.beginPath();
+        ctx.moveTo(9, -6);
+        ctx.quadraticCurveTo(15, -4, 17, 0);
+        ctx.quadraticCurveTo(15, 4, 9, 6);
+        ctx.closePath();
+        ctx.fillStyle = COLORS.rocketNose;
+        ctx.fill();
+        ctx.stroke();
+        // A highlight along the top
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fillRect(-9, -4.5, 16, 1.5);
+    }
+
+    const HEADING = {RIGHT: 0, DOWN: Math.PI / 2, LEFT: Math.PI, UP: -Math.PI / 2};
+
+    // rocket: {x, y, width, height, direction, age (seconds in flight), seed}: centred on its box, nose first
+    function rocket(ctx, r) {
+        ctx.save();
+        ctx.translate(r.x + r.width / 2, r.y + r.height / 2);
+        ctx.rotate(HEADING[r.direction] || 0);
+        rocketShape(ctx, {flame: true, time: r.age || 0, seed: r.seed || 0});
+        ctx.restore();
+    }
+
+    const FIREWORK_LIFE = 1.1;   // seconds
+    const FIREWORK_COLORS = ['#ff4d4d', '#ffd23f', '#4dd2ff', '#7dff6b', '#ff7bf0'];
+
+    // Where streak i of a burst is at a given age: thrown out fast, slowing under drag, drooping a little
+    function fireworkPoint(seed, i, n, age) {
+        const a = (i / n) * TAU + (rnd(seed, i) - 0.5) * 0.3;
+        const speed = 170 + 90 * rnd(seed, i + 100);
+        const d = speed * (1 - Math.exp(-3 * age)) / 3;
+        return {x: Math.cos(a) * d, y: Math.sin(a) * d + 60 * age * age};
+    }
+
+    // A firework burst at (x, y), age seconds after it went off: a white flash, then coloured streaks that slow,
+    // droop and fade, crackling at the end. seed picks the colours and the spread.
+    function firework(ctx, x, y, age, seed = 0) {
+        if (age < 0 || age >= FIREWORK_LIFE) return;
+        const fade = 1 - Math.pow(age / FIREWORK_LIFE, 1.5);
+        ctx.save();
+        ctx.translate(x, y);
+        if (age < 0.14) {
+            const k = age / 0.14;
+            const r = 6 + 26 * Math.sqrt(k);
+            const f = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+            f.addColorStop(0, 'rgba(255, 255, 240, 1)');
+            f.addColorStop(1, 'rgba(255, 210, 120, 0)');
+            ctx.globalAlpha = 1 - k;
+            ctx.fillStyle = f;
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, TAU);
+            ctx.fill();
+        }
+        const n = 28;
+        ctx.lineCap = 'round';
+        ctx.lineWidth = 2.2;
+        for (let i = 0; i < n; i++) {
+            const head = fireworkPoint(seed, i, n, age);
+            const tail = fireworkPoint(seed, i, n, Math.max(0, age - 0.06));
+            const color = FIREWORK_COLORS[Math.floor(rnd(seed, i + 200) * FIREWORK_COLORS.length)];
+            ctx.globalAlpha = fade;
+            ctx.strokeStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(tail.x, tail.y);
+            ctx.lineTo(head.x, head.y);
+            ctx.stroke();
+            // Crackle: glitter flickering at the tips late in the burst
+            if (age > 0.45 && rnd(seed, i * 13 + Math.floor(age * 24)) > 0.55) {
+                ctx.fillStyle = '#fffbe0';
+                ctx.beginPath();
+                ctx.arc(head.x, head.y, 1.4, 0, TAU);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
+    }
+
     const LAUNCHER_ROTATION = {LEFT: 0, UP: Math.PI / 2, RIGHT: Math.PI, DOWN: Math.PI * 1.5};
 
     function roundRect(ctx, x, y, w, h, r) {
@@ -123,8 +278,9 @@ const EntityArt = (() => {
     }
 
     // launcher: {x, y, width, height, shotdirec, time (seconds since the last shot), atkspd (seconds between shots)}.
-    // Drawn facing left and rotated about its centre, as the sprite was. It recoils and flashes as it fires, and a
-    // light on its back warms up before each shot.
+    // Drawn facing left and rotated about its centre, as the sprite was. A firework rocket sits in the barrel, nose
+    // out; it leaves with a recoil and a muzzle flash, the next one slides in from the back, and its fuse sparks and
+    // the light on the back warms up before the next shot.
     function launcher(ctx, l) {
         const w = l.width, h = l.height;
         const since = Math.max(0, l.time || 0);
@@ -150,18 +306,33 @@ const EntityArt = (() => {
         ctx.fillStyle = g;
         ctx.fillRect(bx, by, bw, bh);
 
-        // Arrow pointing out of the mouth
-        ctx.beginPath();
-        ctx.moveTo(w * 0.04, h / 2);
-        ctx.lineTo(w * 0.24, h * 0.3);
-        ctx.lineTo(w * 0.24, h * 0.42);
-        ctx.lineTo(w * 0.46, h * 0.42);
-        ctx.lineTo(w * 0.46, h * 0.58);
-        ctx.lineTo(w * 0.24, h * 0.58);
-        ctx.lineTo(w * 0.24, h * 0.7);
-        ctx.closePath();
-        ctx.fillStyle = COLORS.arrow;
-        ctx.fill();
+        // The loaded rocket. Empty for a moment after a shot, then the next slides in from the back of the barrel.
+        const reload = clamp((since - RELOAD_DELAY) / Math.max(0.05, Math.min(RELOAD_TIME, (l.atkspd || 1) * 0.4)), 0, 1);
+        if (reload > 0) {
+            const e = ease(reload);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(bx, by - 8, bw, bh + 16);   // the rocket never shows outside the housing while it loads
+            ctx.clip();
+            ctx.globalAlpha = e;
+            ctx.translate(w * 0.36 + (1 - e) * 24, h / 2);
+            ctx.rotate(Math.PI);
+            ctx.scale(0.95, 0.95);
+            rocketShape(ctx, {flame: false});
+            // The fuse is lit just before it fires
+            if (charge > 0.75) {
+                const tick = Math.floor(since * 30);
+                ctx.fillStyle = COLORS.spark;
+                for (let k = 0; k < 4; k++) {
+                    const r = rnd(k + 1, tick + k * 5);
+                    ctx.globalAlpha = 0.6 + 0.4 * r;
+                    ctx.beginPath();
+                    ctx.arc(-15 - r * 4, (r - 0.5) * 6, 0.8 + r, 0, TAU);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+        }
 
         // Charge light on the back
         ctx.beginPath();
@@ -317,7 +488,7 @@ const EntityArt = (() => {
         ctx.restore();
     }
 
-    return {COLORS, LEVER_ART, saw, spike, projectile, launcher, lever, exitDoor};
+    return {COLORS, LEVER_ART, FIREWORK_LIFE, saw, spike, projectile, rocket, rocketShape, firework, fireworkPoint, launcher, lever, exitDoor};
 })();
 
 if (typeof module !== 'undefined' && module.exports) {

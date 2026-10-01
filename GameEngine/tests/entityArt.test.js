@@ -28,6 +28,8 @@ function recorder() {
         fillRect(x, y, w, h) { pt(x, y); pt(x + w, y + h); pt(x + w, y); pt(x, y + h); rec.fills.push(ctx.fillStyle); },
         strokeRect(x, y, w, h) { pt(x, y); pt(x + w, y + h); },
         createLinearGradient: gradient, createRadialGradient: gradient,
+        // A clip region is not drawn, so it records nothing
+        rect() {}, clip() {},
         drawImage() { rec.images++; },
     };
     return {ctx, rec};
@@ -114,10 +116,13 @@ test('the exit door fills the sprite\'s 69x81.5 and shows whether it is locked',
 });
 
 // The real entity classes, with an asset manager that has no images at all
+// A map that is wall everywhere, and an empty BigBlock: enough for Projectile.update's collision checks
+const STUBS = 'class drawMap { checkCollisions() { return {collides: true}; } } class BigBlock {}';
 const get = loadBrowserScripts(['boundingBox.js', 'entityArt.js', 'enemies.js', 'lever.js', 'exitDoor.js'], {
     ASSET_MANAGER: {getAsset(path) { throw new Error(`asked for ${path}`); }},
     console: {log() {}, warn() {}, error: console.error},
 });
+get(STUBS);   // declared in the scripts' own scope, where Projectile.update looks them up
 const fakeGame = () => ({options: {debugging: false}, clockTick: 1 / 60, entities: [], addEntity() {}});
 
 test('spikes, launchers, projectiles, levers and doors need no images and draw without one', () => {
@@ -154,4 +159,81 @@ test('a pulled lever swings down over a fifth of a second; an unlocked door slid
     for (let f = 0; f < 40; f++) { lever.draw(ctx); door.draw(ctx); }
     assert.equal(lever.flip, 1);
     assert.equal(door.openAmount, 1);
+});
+
+test('a rocket is drawn around its 30x30 box, nose first, with its flame behind', () => {
+    for (const direction of ['LEFT', 'RIGHT', 'UP', 'DOWN']) {
+        for (const age of [0, 0.13, 0.5, 2.7]) {
+            const {ctx, rec} = recorder();
+            EntityArt.rocket(ctx, {x: 100, y: 200, width: 30, height: 30, direction, age, seed: 0.4});
+            assertInside(rec, boxOf(100, 200, 30, 30), 30, `${direction} at ${age}s`);
+            // The nose reaches 17px ahead of the centre; the flame trails well behind it
+            const b = bounds(rec.points), c = {x: 115, y: 215};
+            const ahead = {RIGHT: b.right - c.x, LEFT: c.x - b.left, DOWN: b.bottom - c.y, UP: c.y - b.top}[direction];
+            const behind = {RIGHT: c.x - b.left, LEFT: b.right - c.x, DOWN: c.y - b.top, UP: b.bottom - c.y}[direction];
+            assert.ok(Math.abs(ahead - 17) < 1.5, `${direction}: nose ${ahead.toFixed(1)} ahead`);
+            assert.ok(behind > 25, `${direction}: flame only ${behind.toFixed(1)} behind`);
+        }
+    }
+});
+
+test('a firework burst spreads out, stays within reach and is gone after its life', () => {
+    const at = age => { const {ctx, rec} = recorder(); EntityArt.firework(ctx, 500, 400, age, 0.7); return rec; };
+    const spread = rec => Math.max(...rec.points.map(p => Math.hypot(p.x - 500, p.y - 400)));
+    assert.ok(at(0.02).points.length > 0, 'the flash at once');
+    assert.ok(spread(at(0.4)) > spread(at(0.1)), 'it spreads');
+    for (const age of [0, 0.1, 0.3, 0.6, 1.0]) assert.ok(spread(at(age)) < 130, `reach at ${age}s: ${spread(at(age)).toFixed(0)}`);
+    assert.equal(at(EntityArt.FIREWORK_LIFE).points.length, 0, 'nothing once over');
+    assert.equal(at(0.3).images, 0);
+    // The same seed draws the same burst; another seed a different one
+    assert.deepEqual(at(0.3).points, at(0.3).points);
+    const other = recorder(); EntityArt.firework(other.ctx, 500, 400, 0.3, 0.2);
+    assert.notDeepEqual(other.rec.points, at(0.3).points);
+});
+
+test('a launcher holds a rocket, is empty just after firing, and reloads before the next shot', () => {
+    const fills = time => { const {ctx, rec} = recorder();
+        EntityArt.launcher(ctx, {x: 100, y: 200, width: 58, height: 54, shotdirec: 'LEFT', time, atkspd: 2}); return rec.fills; };
+    const hasRocket = time => fills(time).includes(EntityArt.COLORS.rocketNose);
+    assert.ok(!hasRocket(0.05), 'empty right after a shot');
+    assert.ok(hasRocket(0.4), 'the next rocket is sliding in');
+    assert.ok(hasRocket(1.9), 'loaded before it fires');
+});
+
+test('the launcher fires rockets, which burst once when they hit a wall or the player', () => {
+    const added = [];
+    const game = Object.assign(fakeGame(), {addEntity: e => added.push(e)});
+    const Rocket = get('Rocket'), Projectile = get('Projectile'), FireworkBurst = get('FireworkBurst');
+    const launcher = new (get('ProjectileLauncher'))({gameEngine: game, x: 10, y: 10, speed: 0, moving: false, atkspd: 2, projspd: 100, shotdirec: 'UP'});
+    launcher.update();
+    assert.equal(added.length, 1);
+    const rocket = added[0];
+    assert.ok(rocket instanceof Rocket && rocket instanceof Projectile, 'a Rocket, and so a hazard to the player');
+    assert.equal(rocket.width, 30);
+    assert.equal(rocket.height, 30);
+    // Hitting the player (Player calls explode) or a wall bursts it exactly once, where it was
+    rocket.explode();
+    rocket.explode();
+    assert.equal(added.filter(e => e instanceof FireworkBurst).length, 1);
+    const burst = added[1];
+    assert.equal(burst.x, rocket.x + 15);
+    assert.equal(burst.y, rocket.y + 15);
+    assert.ok(rocket.removeFromWorld);
+    // A wall: Projectile.update marks it for removal, and the rocket bursts
+    const wallGame = Object.assign(fakeGame(), {addEntity: e => added.push(e),
+        entities: [new (get('drawMap'))()]});
+    const r2 = new Rocket(wallGame, 0, 0, 100, 'LEFT');
+    wallGame.entities.push(r2);
+    r2.update();
+    assert.ok(r2.removeFromWorld && r2.exploded, 'burst on the wall');
+    // The burst ages, draws, and removes itself when done
+    const {ctx, rec} = recorder();
+    burst.advance(0.2);
+    burst.update();
+    assert.ok(!burst.removeFromWorld);
+    burst.draw(ctx);
+    assert.ok(rec.points.length > 0);
+    burst.advance(EntityArt.FIREWORK_LIFE);
+    burst.update();
+    assert.ok(burst.removeFromWorld);
 });

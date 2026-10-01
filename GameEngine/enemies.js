@@ -33,7 +33,7 @@ class ProjectileLauncher {
         if (this.moving) updateMovement(this.game, this);
         if (this.time >= this.atkspd) {
             this.time = 0;
-            this.game.addEntity(new Projectile(this.game, this.x + (this.width / 2) - (30 / 2), 
+            this.game.addEntity(new Rocket(this.game, this.x + (this.width / 2) - (30 / 2), 
                             this.y + (this.height / 2) - (30 / 2), this.projspd, this.shotdirec))
         }
         this.time += this.game.clockTick;
@@ -729,3 +729,67 @@ function updateMovement(game, object) { // consider option to make reverse coord
     }
     }
 } */
+
+/**
+ * The launcher's firework rocket. It is a Projectile in every way that matters to the game (the same 30x30 box,
+ * speed and wall handling, and the player's hazard check is `instanceof Projectile`), drawn as a rocket instead of
+ * a saw blade, and it bursts into a firework where it hits a wall, a block or the player.
+ */
+class Rocket extends Projectile {
+    constructor(game, x, y, speed, direction) {
+        super(game, x, y, speed, direction);
+        this.age = 0;                  // seconds in flight: the flame's flicker
+        this.seed = Math.random();     // so no two rockets spark or burst alike
+        this.exploded = false;
+    }
+
+    update() {
+        this.age += this.game.clockTick;
+        super.update();
+        // Projectile.update removes it when it hits a wall or a big block
+        if (this.removeFromWorld) this.explode();
+    }
+
+    // Burst at the rocket's centre, once. The player calls this when the rocket hits them.
+    explode() {
+        if (this.exploded) return;
+        this.exploded = true;
+        this.removeFromWorld = true;
+        this.game.addEntity(new FireworkBurst(this.game, this.x + this.width / 2, this.y + this.height / 2, this.seed));
+    }
+
+    draw(ctx) {
+        if (this.game.options.debugging) {
+            ctx.strokeStyle = 'red';
+            ctx.strokeRect(this.x, this.y, this.width, this.height);
+        }
+        EntityArt.rocket(ctx, this);
+    }
+}
+
+/**
+ * A rocket's firework burst: drawing only, never solid and never a hazard. It runs on the real clock, because a
+ * rocket that hits the player kills them, and the game clock stops while the player is dead (see Player.kill).
+ */
+class FireworkBurst {
+    constructor(game, x, y, seed = Math.random()) {
+        Object.assign(this, {game, x, y, seed});
+        this.age = 0;
+        this.drawnAt = null;
+    }
+
+    advance(seconds) {
+        this.age += seconds;
+    }
+
+    update() {
+        if (this.age >= EntityArt.FIREWORK_LIFE) this.removeFromWorld = true;
+    }
+
+    draw(ctx) {
+        const now = Date.now();
+        if (this.drawnAt !== null) this.advance(Math.min(0.05, (now - this.drawnAt) / 1000));
+        this.drawnAt = now;
+        EntityArt.firework(ctx, this.x, this.y, this.age, this.seed);
+    }
+}
