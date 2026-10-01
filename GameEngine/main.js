@@ -17,8 +17,7 @@ function startGame(options = {}) {
 
     // Spikes, launchers, projectiles, levers and the exit door are vector drawings (entityArt.js)
     // level assets
-    ASSET_MANAGER.queueDownload("./sprites/plat_wide.png");
-    ASSET_MANAGER.queueDownload("./sprites/plat_short.png");
+    // Platforms are vector drawings (entityArt.js)
     // transitions
     ASSET_MANAGER.queueDownload("./sprites/elevator_left.png");
     ASSET_MANAGER.queueDownload("./sprites/elevator_right.png");

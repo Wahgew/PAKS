@@ -118,7 +118,7 @@ test('the exit door fills the sprite\'s 69x81.5 and shows whether it is locked',
 // The real entity classes, with an asset manager that has no images at all
 // A map that is wall everywhere, and an empty BigBlock: enough for Projectile.update's collision checks
 const STUBS = 'class drawMap { checkCollisions() { return {collides: true}; } } class BigBlock {}';
-const get = loadBrowserScripts(['boundingBox.js', 'entityArt.js', 'enemies.js', 'lever.js', 'exitDoor.js'], {
+const get = loadBrowserScripts(['boundingBox.js', 'entityArt.js', 'enemies.js', 'lever.js', 'exitDoor.js', 'platform.js'], {
     ASSET_MANAGER: {getAsset(path) { throw new Error(`asked for ${path}`); }},
     console: {log() {}, warn() {}, error: console.error},
 });
@@ -236,4 +236,18 @@ test('the launcher fires rockets, which burst once when they hit a wall or the p
     burst.advance(EntityArt.FIREWORK_LIFE);
     burst.update();
     assert.ok(burst.removeFromWorld);
+});
+
+test('a platform is drawn inside its box at both sizes, with no image', () => {
+    for (const [w, label] of [[225, 'SHORT'], [450, 'WIDE']]) {
+        const {ctx, rec} = recorder();
+        EntityArt.platform(ctx, {x: 100, y: 200, width: w, height: 20});
+        assertInside(rec, boxOf(100, 200, w, 20), 1.5, label);
+    }
+    const game = fakeGame();
+    const p = new (get('Platform'))({gameEngine: game, x: 10, y: 10, speed: 0, moving: false, size: 'WIDE'});
+    assert.equal(p.width, 450);
+    const {ctx, rec} = recorder();
+    p.draw(ctx);
+    assert.equal(rec.images, 0);
 });
