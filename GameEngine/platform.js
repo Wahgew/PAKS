@@ -17,15 +17,12 @@ class Platform {
             case 'SHORT':
                 this.height = 20;
                 this.width = 225;
-                this.spritesheet = ASSET_MANAGER.getAsset("./sprites/plat_short.png");
                 break;
             case 'WIDE':
                 this.height = 20;
                 this.width = 450;
-                this.spritesheet = ASSET_MANAGER.getAsset("./sprites/plat_wide.png");
                 break;
         }
-        this.animator = new Animator(this.spritesheet, 0, 0, this.width, this.height, 1, 0.1);
         this.updateBB();
         this.lastBB = this.BB;
     }
@@ -174,7 +171,7 @@ class Platform {
             }
         }
 
-        // Draw the sprite
-        this.animator.drawFrame(this.game.clockTick, ctx, this.x, this.y, 1);
+        // Vector drawing (entityArt.js), the old sprite's size and look
+        EntityArt.platform(ctx, this);
     }
 }

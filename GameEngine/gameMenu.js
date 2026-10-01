@@ -28,7 +28,7 @@ class GameMenu {
         this.menuButton.style.padding = '0';
         this.menuButton.style.cursor = 'pointer';
         this.menuButton.style.zIndex = '1000';
-        this.menuButton.style.backgroundImage = 'url("./sprites/menu.png")';
+        this.menuButton.style.backgroundImage = UIArt.dataUri(UIArt.menuIcon());   // vector (uiArt.js)
         this.menuButton.style.backgroundSize = 'contain';
         this.menuButton.style.backgroundPosition = 'center';
         this.menuButton.style.backgroundRepeat = 'no-repeat';
@@ -484,7 +484,7 @@ class GameMenu {
         if (this.gameEngine) {
             this.gameEngine.running = false; // Stop the game loop
             this.gameEngine.entities = []; // Clear all entities
-            this.gameEngine.ctx.clearRect(0, 0, this.gameEngine.ctx.canvas.width, this.gameEngine.ctx.canvas.height);
+            this.gameEngine.ctx.clearRect(0, 0, this.gameEngine.viewW, this.gameEngine.viewH);
         }
         // Stop game music and play menu music
         if (window.AUDIO_MANAGER) {

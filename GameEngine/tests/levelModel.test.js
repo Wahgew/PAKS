@@ -88,8 +88,8 @@ test('fields the editor does not know about survive a round trip', () => {
 // The sizes in LevelModel are copied from the entity classes. Build the real classes and compare, for every
 // entity in every level, so a change to a sprite size or hitbox fails here instead of misplacing things in the editor.
 test('entity boxes match the real entity classes on every entity in every level', () => {
-    const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js',
-        'bigblock.js', 'enemies.js', 'hint.js', 'player.js', 'levelLoader.js'], {
+    const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'tileArt.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js',
+        'bigblock.js', 'enemies.js', 'hint.js', 'stickman.js', 'entityArt.js', 'player.js', 'levelLoader.js'], {
         window: {},
         console: {log() {}, warn: console.warn, error: console.error},   // GlowingLaser logs on every construction
         ASSET_MANAGER: {getAsset: () => ({width: 46, height: 106})},
@@ -126,8 +126,8 @@ test('entity boxes match the real entity classes on every entity in every level'
 });
 
 test('a new entity of every type validates and loads through the real LevelLoader', () => {
-    const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js',
-        'bigblock.js', 'enemies.js', 'hint.js', 'player.js', 'levelLoader.js'], {
+    const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'tileArt.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js',
+        'bigblock.js', 'enemies.js', 'hint.js', 'stickman.js', 'entityArt.js', 'player.js', 'levelLoader.js'], {
         window: {},
         console: {log() {}, warn() {}, error: console.error},
         ASSET_MANAGER: {getAsset: () => ({width: 46, height: 106})},

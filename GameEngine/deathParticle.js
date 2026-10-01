@@ -114,3 +114,49 @@ class DeathParticle {
         }
     }
 }
+
+// One piece of the stickman (a limb, the torso or the head, as Stickman.segments gives them) thrown out from where
+// the player died: it keeps its shape and spins, falls under gravity and fades. Time-based, unlike the splatter
+// above, so it moves the same at any frame rate.
+class DeathLimb {
+    constructor(segment, originX, originY) {
+        const pts = segment.points;
+        this.x = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+        this.y = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+        // The piece's shape around its own centre, so it can spin about it
+        this.segment = Object.assign({}, segment, {points: pts.map(p => ({x: p.x - this.x, y: p.y - this.y}))});
+
+        // Outward from the body's centre, plus a kick upwards; the head flies highest
+        let dx = this.x - originX, dy = this.y - originY;
+        const len = Math.hypot(dx, dy) || 1;
+        dx /= len; dy /= len;
+        const speed = 220 + Math.random() * 160;
+        this.vx = dx * speed + (Math.random() - 0.5) * 80;
+        this.vy = dy * speed - (segment.part === 'head' ? 420 : 280) - Math.random() * 120;
+        this.rotation = 0;
+        this.spin = (Math.random() < 0.5 ? -1 : 1) * (6 + Math.random() * 8);
+        this.age = 0;
+        this.alpha = 1;
+    }
+
+    update(deltaTime) {
+        this.age += deltaTime;
+        this.vy += DeathLimb.GRAVITY * deltaTime;
+        this.x += this.vx * deltaTime;
+        this.y += this.vy * deltaTime;
+        this.rotation += this.spin * deltaTime;
+        // Fully visible for a moment so the pieces read as the figure, then fading
+        this.alpha = Math.max(0, 1 - Math.max(0, this.age - 0.2) / 0.7);
+        return this.alpha > 0.01;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        Stickman.drawSegment(ctx, this.segment);
+        ctx.restore();
+    }
+}
+DeathLimb.GRAVITY = 1600;

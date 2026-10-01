@@ -5,10 +5,11 @@ class BigBlock {
         this.height = y2 - y;
         this.BB = new BoundingBox(this.x, this.y, this.width, this.height);
         this.colors = [
-            "maroon",// actual colors are black, "darkcyan", "darkslateblue", 'slategray'
-            'teal',
-            'plum',
-            'darkslategray',
+            // Hex, so the edges can be shaded (tileArt.js); these are exactly the old named colours
+            "#800000",  // maroon (the tiles are black, darkcyan, darkslateblue, slategray)
+            "#008080",  // teal
+            "#dda0dd",  // plum
+            "#2f4f4f",  // darkslategray
             "#2E8B57",  // Forest Green
             "#CD853F",  // amber
             "#20639B",  // ocean
@@ -24,7 +25,13 @@ class BigBlock {
             ctx.strokeStyle = 'red';
             ctx.strokeRect(this.x, this.y, this.width, this.height);
         }
-        ctx.fillStyle = this.colors[this.game.currentColor];
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        // With the tiles' light top and shaded bottom (tileArt.js); a reversed block (negative size) stays a plain fill
+        const color = this.colors[this.game.currentColor];
+        if (this.width > 0 && this.height > 0) {
+            TileArt.drawBigBlock(ctx, this.x, this.y, this.width, this.height, color);
+        } else {
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
     }
 }
