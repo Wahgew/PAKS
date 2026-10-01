@@ -187,6 +187,10 @@ const Stickman = (() => {
     // ---- Clips -----------------------------------------------------------------------------------------------------
     // Each returns a pose from {t: seconds in this state, time: rig clock, vx, vy, phase, squash}.
 
+    // The crouch's shape, kept together so it is easy to tune
+    const SQUAT = {hip: 18, hipX: -7, lean: 0.75, head: -0.6, nFoot: {x: 8, y: 0}, fFoot: {x: -5, y: 0},
+        hand: {x: 23, y: 8}};   // hands relative to the shoulder
+
     const CLIPS = {
         idle(c) {
             const breath = 0.5 - 0.5 * Math.cos(2 * Math.PI * c.time / 2.6);
@@ -214,15 +218,15 @@ const Stickman = (() => {
         },
 
         crouch(c) {
-            // Hands resting on the knees, rising and falling a little with the breath
+            // A deep squat: hips down over the heels, knees up in front, arms reaching forward for balance (hands
+            // resting on the knees put the elbow right on the knee and read as a tangle). It breathes a little.
             const breath = 0.5 - 0.5 * Math.cos(2 * Math.PI * c.time / 2.2);
-            const lean = 0.5, hipX = -4, hipY = -(24 + 0.4 * breath - c.squash * 0.5);
-            const pose = standing({lean, head: -0.4}, hipX, hipY, {x: 10, y: 0}, {x: -7, y: 0});
+            const lean = SQUAT.lean, hipX = SQUAT.hipX, hipY = -(SQUAT.hip + 0.4 * breath - c.squash * 0.5);
+            const pose = standing({lean, head: SQUAT.head}, hipX, hipY, SQUAT.nFoot, SQUAT.fFoot);
             const sh = shoulderAt(hipX, hipY, lean);
-            const nKnee = add({x: hipX, y: hipY}, down(pose.nThigh), DIM.thigh);
-            const fKnee = add({x: hipX, y: hipY}, down(pose.fThigh), DIM.thigh);
-            const n = armIK(sh.x, sh.y, nKnee.x + 1, nKnee.y - 2, true);
-            const f = armIK(sh.x, sh.y, fKnee.x + 2, fKnee.y - 2, true);
+            // Nearly straight arms with the slight bend upward: bent downward, the elbow lands on the knee
+            const n = armIK(sh.x, sh.y, sh.x + SQUAT.hand.x, sh.y + SQUAT.hand.y + breath, true);
+            const f = armIK(sh.x, sh.y, sh.x + SQUAT.hand.x - 2, sh.y + SQUAT.hand.y + 4 + breath, true);
             return Object.assign(pose, {nArm: n.arm, nElbow: n.elbow, fArm: f.arm, fElbow: f.elbow});
         },
 

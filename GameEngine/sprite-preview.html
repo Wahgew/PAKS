@@ -187,7 +187,8 @@
         ctx.fillRect(0, 0, w, h);
         ctx.save();
         // In a jump the view rises with the figure, so the whole arc stays in frame at any zoom
-        const groundY = h - 50 + Math.max(0, main.height * zoom - (h - 50 - 90 * zoom));
+        const headroom = Math.max(0, h - 60 - 90 * zoom);
+        const groundY = h - 50 + Math.max(0, main.height * zoom - headroom);
         ctx.translate(w / 2, groundY);
         ctx.scale(zoom, zoom);
         drawGround(ctx, -w / 2 / zoom, w / 2 / zoom, 0, main.x, bg);

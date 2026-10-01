@@ -265,3 +265,15 @@ test('drawing strokes the far limbs first and the near side last, with no images
     const strokes = calls.filter(([k]) => k === 'set strokeStyle').map(([, [v]]) => v);
     assert.deepEqual(strokes, [Stickman.STYLE.far, Stickman.STYLE.far, Stickman.STYLE.near, Stickman.STYLE.near, Stickman.STYLE.near]);
 });
+
+test('the crouch is a deep squat, with the arms out front and the elbows clear of the knees', () => {
+    for (let i = 0; i < 20; i++) {
+        const j = Stickman.solve(Stickman.CLIPS.crouch({t: i * 0.1, time: i * 0.13, vx: 0, vy: 0, phase: 0, squash: 0}));
+        assert.ok(j.hip.y > -20, `hips at ${j.hip.y.toFixed(1)}, not down in a squat`);
+        assert.ok(j.hip.x < Math.min(j.nFoot.x, j.nKnee.x), 'hips sit back behind the front foot and knee');
+        for (const side of ['n', 'f']) {
+            assert.ok(dist(j[side + 'Elbow'], j[side + 'Knee']) > 6, `${side} elbow on the knee`);
+            assert.ok(j[side + 'Hand'].x > j[side + 'Knee'].x, `${side} hand out in front of the knee`);
+        }
+    }
+});
