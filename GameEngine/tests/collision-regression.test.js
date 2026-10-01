@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {loadBrowserScripts, loadLevel} = require('./helpers/browserScripts.js');
 
-const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js'], {ASSET_MANAGER: {getAsset: () => ({})}});
+const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'tileArt.js', 'drawMap.js'], {ASSET_MANAGER: {getAsset: () => ({})}});
 const drawMap = get('drawMap');
 const BoundingBox = get('BoundingBox');
 const TileShapes = get('TileShapes');

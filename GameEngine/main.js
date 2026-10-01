@@ -11,14 +11,7 @@ function startGame(options = {}) {
     ASSET_MANAGER = new AssetManager(); // Declared globally, accessible everywhere if I set it to const the map not gonna load when pressing start
 
     // "block/tiles"
-    ASSET_MANAGER.queueDownload("./sprites/block.png");
-    ASSET_MANAGER.queueDownload("./sprites/block2.png");
-    ASSET_MANAGER.queueDownload("./sprites/block3.png");
-    ASSET_MANAGER.queueDownload("./sprites/block4.png");
-    ASSET_MANAGER.queueDownload("./sprites/block5_forestgreen.png")
-    ASSET_MANAGER.queueDownload("./sprites/block6_amber.png")
-    ASSET_MANAGER.queueDownload("./sprites/block7_ocean.png")
-    ASSET_MANAGER.queueDownload("./sprites/block8_burgundy.png")
+    // Tiles are vector shapes in the level's theme colour (tileArt.js)
     // The player is drawn as a vector rig (stickman.js), so it needs no images
     ASSET_MANAGER.queueDownload("./sprites/menu.png");
 

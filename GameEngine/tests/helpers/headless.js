@@ -7,7 +7,7 @@ const DT = 1 / 60;
 const pending = [];          // {at, fn}: timers of the world being played
 let now = 0;                 // ms of game time in that world
 
-const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js', 'hint.js',
+const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'tileArt.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js', 'hint.js',
     'deathParticle.js', 'deathAnimate.js', 'bigblock.js', 'enemies.js', 'stickman.js', 'entityArt.js', 'player.js', 'levelconfig.js', 'levelLoader.js'], {
     window: {},
     console: {log() {}, warn: console.warn, error: console.error},

@@ -2,17 +2,6 @@ class drawMap {
         constructor(drawSize, gameEngine) {
                 this.drawSize = drawSize;
                 this.game = gameEngine;
-                this.block = ASSET_MANAGER.getAsset("./sprites/block.png");
-                console.log("DrawMap initialized with size:", drawSize);
-                this.blocks = [
-                        ASSET_MANAGER.getAsset("./sprites/block.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block2.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block3.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block4.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block5_forestgreen.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block6_amber.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block7_ocean.png"),
-                        ASSET_MANAGER.getAsset("./sprites/block8_burgundy.png")];
                 this.colors = [
                         // Original 9 colors
                         "pink",
@@ -43,7 +32,7 @@ class drawMap {
                 } else {
                         // Completely random selection from all options
                         this.random = Math.floor(Math.random() * this.colors.length);
-                        this.random2 = Math.floor(Math.random() * this.blocks.length);
+                        this.random2 = Math.floor(Math.random() * TileArt.PALETTE.length);
                         console.log("Using random color combination");
                 }
                 gameEngine.currentColor = this.random2;
@@ -240,58 +229,35 @@ class drawMap {
                 const size = this.drawSize;
                 const rowFrom = view ? Math.max(0, Math.floor(view.top / size)) : 0;
                 const rowTo = view ? Math.min(this.map.length - 1, Math.floor(view.bottom / size)) : this.map.length - 1;
-                for (let i = rowFrom; i <= rowTo; i++) {
-                        const colFrom = view ? Math.max(0, Math.floor(view.left / size)) : 0;
-                        const colTo = view ? Math.min(this.map[i].length - 1, Math.floor(view.right / size)) : this.map[i].length - 1;
-                        for (let j = colFrom; j <= colTo; j++) {
-                                if (this.map[i][j] === 1) {  // If it's a solid tile
-                                        const x = j * this.drawSize;
-                                        const y = i * this.drawSize;
+                const colFrom = view ? Math.max(0, Math.floor(view.left / size)) : 0;
+                const lastCol = Math.ceil(this.pixelWidth / size) - 1;
+                const colTo = view ? Math.min(lastCol, Math.floor(view.right / size)) : lastCol;
+                // Vector tiles in the level's theme colour (tileArt.js); random2 picks the colour, as it picked the block image
+                TileArt.drawTiles(ctx, this.map, size, {rowFrom, rowTo, colFrom, colTo}, this.random2);
 
-                                        try {
-                                                ctx.drawImage(
-                                                    this.blocks[this.random2],
-                                                    x,
-                                                    y,
-                                                    this.drawSize,
-                                                    this.drawSize
-                                                );
-
-                                                // Draw collision boxes if debugging is enabled
-                                                if (this.game.options.debugging) {
-                                                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-                                                        ctx.strokeRect(x, y, this.drawSize, this.drawSize);
-                                                }
-                                        } catch (e) {
-                                                console.error("Error drawing tile at", x, y, e);
+                if (this.game.options.debugging) {
+                        for (let i = rowFrom; i <= rowTo; i++) {
+                                for (let j = colFrom; j <= Math.min(colTo, this.map[i].length - 1); j++) {
+                                        const id = this.map[i][j];
+                                        if (id === 1) {
+                                                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                                                ctx.strokeRect(j * size, i * size, size, size);
+                                        } else if (id) {
+                                                this.#drawShapeDebug(ctx, id, j * size, i * size);
                                         }
-                                } else if (this.map[i][j] !== 0) {
-                                        this.#drawShape(ctx, this.map[i][j], j * this.drawSize, i * this.drawSize);
                                 }
                         }
                 }
         }
 
-        // Sloped/curved tile: the same block sprite, clipped to the shape's outline so it matches the theme.
-        #drawShape(ctx, id, x, y) {
+        // Debug view of a sloped/curved tile: its outline plus the convex pieces collision actually uses
+        #drawShapeDebug(ctx, id, x, y) {
                 const shape = TileShapes.get(id, this.drawSize);
                 if (!shape) return;
-
-                ctx.save();
-                ctx.beginPath();
-                shape.outline.forEach((p, k) => k === 0 ? ctx.moveTo(x + p.x, y + p.y) : ctx.lineTo(x + p.x, y + p.y));
-                ctx.closePath();
-                ctx.clip();
-                ctx.drawImage(this.blocks[this.random2], x, y, this.drawSize, this.drawSize);
-                ctx.restore();
-
-                if (this.game.options.debugging) {
-                        // Outline plus the convex pieces collision actually uses
-                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
-                        ctx.stroke(this.#shapePath(shape.outline, x, y));
-                        ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)';
-                        shape.pieces.forEach(piece => ctx.stroke(this.#shapePath(piece.pts, x, y)));
-                }
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+                ctx.stroke(this.#shapePath(shape.outline, x, y));
+                ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)';
+                shape.pieces.forEach(piece => ctx.stroke(this.#shapePath(piece.pts, x, y)));
         }
 
         #shapePath(pts, x, y) {

@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const {loadBrowserScripts} = require('./helpers/browserScripts.js');
 
 const win = {};
-const get = loadBrowserScripts(['camera.js', 'boundingBox.js', 'tileShapes.js', 'drawMap.js', 'gameengine.js'], {
+const get = loadBrowserScripts(['camera.js', 'boundingBox.js', 'tileShapes.js', 'tileArt.js', 'drawMap.js', 'gameengine.js'], {
     window: win,
     console: {log() {}, warn() {}, error: console.error},
     LevelUI: class { draw() {} },
@@ -156,9 +156,14 @@ test('drawMap draws only the tiles in view, and never resizes the canvas', () =>
     game.camera.y = 2000;
     const ctx = game.ctx;
     map.draw(ctx);
-    const tiles = ctx.log.filter(l => l[0] === 'drawImage').length;
-    // 1900 x 1025 px is 76 x 41 tiles; allow the partial tile on each side
-    assert.ok(tiles > 0 && tiles <= 78 * 43, `drew ${tiles} tiles`);
+    // Tiles are vector (tileArt.js): everything after the background is inside the view, give or take a tile.
+    // 1900 x 1025 px is 76 x 41 tiles from (3000, 2000).
+    assert.equal(ctx.log.filter(l => l[0] === 'drawImage').length, 0, 'no images');
+    const rects = ctx.log.filter(l => l[0] === 'fillRect').slice(1).map(l => plain(l[1]));
+    assert.ok(rects.length > 0, 'tiles were drawn');
+    for (const [x, y, w, h] of rects) {
+        assert.ok(x >= 3000 - 25 && y >= 2000 - 25 && x + w <= 3000 + 1900 + 26 && y + h <= 2000 + 1025 + 26, `drew at ${x}, ${y}`);
+    }
     assert.equal(ctx.canvas.width, 1900, 'the canvas keeps its size');
     const bg = ctx.log.find(l => l[0] === 'fillRect');
     assert.deepEqual(plain(bg[1]), [0, 0, 7500, 7500], 'the background covers the level, not the canvas');

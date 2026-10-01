@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const {loadBrowserScripts} = require('./helpers/browserScripts.js');
 
 const win = {};
-const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js', 'deathParticle.js', 'deathAnimate.js',
+const get = loadBrowserScripts(['boundingBox.js', 'tileShapes.js', 'tileArt.js', 'drawMap.js', 'exitDoor.js', 'platform.js', 'lever.js', 'deathParticle.js', 'deathAnimate.js',
     'bigblock.js', 'enemies.js', 'stickman.js', 'entityArt.js', 'player.js', 'levelconfig.js', 'levelLoader.js', 'levelModel.js', 'levelEditor.js'], {
     window: win,
     console: {log() {}, warn: console.warn, error: console.error},
