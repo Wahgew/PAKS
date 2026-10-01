@@ -18,7 +18,7 @@ You play a stickman trying to reach the top of a building, one elevator floor at
 
 - **Momentum-based movement:** acceleration and deceleration instead of instant speed changes, with walk, sprint, skid, crouch and slide
 - **Wall sliding and wall jumping**
-- **Vector stickman:** the player is a jointed vector figure posed every frame. Walk and run cycles follow your real speed, so planted feet never slide; every move blends smoothly into the next, hard landings squash, and a soft shadow sits under your feet. Spikes, launchers, projectiles, levers and the exit door are vector drawings too, with small animations (a launcher's light warms up before it fires, a pulled lever swings, the exit doors slide open). Dying throws the stickman's own limbs
+- **Vector stickman:** the player is a jointed vector figure posed every frame. Walk and run cycles follow your real speed, so planted feet never slide; every move blends smoothly into the next, hard landings squash, and a soft shadow sits under your feet. Spikes, launchers, levers and the exit door are vector drawings too, with small animations: launchers fire cartoon firework rockets that burst into fireworks where they hit, a pulled lever swings, the exit doors slide open. Dying throws the stickman's own limbs
 - **Slopes and curves:** 45° and gentle 26.6° ramps, steep 63.4° faces, and quarter-circle shoulders and quarter-pipes that you run, slide and jump along at full speed
 - **Variable jump height** (release jump early for a shorter hop) and jump buffering
 - **Hazards:** static, moving and tracking spikes, projectile launchers, and glowing lasers
